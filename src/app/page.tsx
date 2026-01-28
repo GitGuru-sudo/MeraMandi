@@ -1,65 +1,162 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+export default function SplashScreen() {
+  const router = useRouter();
+  const [animationComplete, setAnimationComplete] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationComplete(true);
+      router.push('/home');
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <main className="splash-screen">
+      <div className={`gradient-overlay ${animationComplete ? 'fade-out' : ''}`} />
+
+      <div className="logo-container">
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
+          src="/logo.png"
+          alt="MeraMandi"
+          width={180}
+          height={180}
+          className="logo-image"
           priority
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+
+      <h1 className="brand-title">MeraMandi</h1>
+
+      <div className="loading-dots">
+        <span />
+        <span />
+        <span />
+      </div>
+
+      {/* ✅ See Prices Button */}
+      {animationComplete && (
+        <button
+          className="see-prices-btn"
+          onClick={() => router.push('/home')}
+        >
+          See Prices
+        </button>
+      )}
+
+      <style jsx>{`
+        .splash-screen {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #ffffff, #ecfdf5, #dcfce7);
+          overflow: hidden;
+        }
+
+        .gradient-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e);
+          animation: revealBackground 2.5s ease-out forwards;
+          z-index: 1;
+        }
+
+        .fade-out {
+          animation: fadeOut 0.5s ease-out forwards !important;
+        }
+
+        @keyframes revealBackground {
+          from { clip-path: circle(150% at 50% 50%); }
+          to { clip-path: circle(0% at 50% 50%); opacity: 0; }
+        }
+
+        @keyframes fadeOut {
+          to { opacity: 0; }
+        }
+
+        .logo-container {
+          z-index: 10;
+          animation: logoEntrance 1s ease-out forwards, pulse 2s ease-in-out 1s infinite;
+        }
+
+        @keyframes logoEntrance {
+          0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0); }
+        }
+
+        @keyframes pulse {
+          50% { transform: scale(1.08); }
+        }
+
+        .brand-title {
+          z-index: 10;
+          font-size: 2.5rem;
+          font-weight: 800;
+          color: #166534;
+          margin-top: 1.5rem;
+          opacity: 0;
+          animation: slideUp 0.8s ease-out 0.5s forwards;
+        }
+
+        .loading-dots {
+          z-index: 10;
+          display: flex;
+          gap: 8px;
+          margin-top: 2rem;
+          opacity: 0;
+          animation: slideUp 0.8s ease-out 0.8s forwards;
+        }
+
+        .loading-dots span {
+          width: 12px;
+          height: 12px;
+          background: #22c55e;
+          border-radius: 50%;
+          animation: bounce 1.4s infinite;
+        }
+
+        .see-prices-btn {
+          z-index: 10;
+          margin-top: 2.5rem;
+          padding: 12px 28px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          background: #16a34a;
+          color: white;
+          border: none;
+          border-radius: 999px;
+          cursor: pointer;
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        .see-prices-btn:hover {
+          background: #15803d;
+          transform: scale(1.05);
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+          40% { transform: translateY(-12px); }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </main>
   );
 }
