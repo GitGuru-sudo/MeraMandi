@@ -10,6 +10,8 @@ export interface MandiRecord {
     arrival_date: string;
 }
 
+const TODAY = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
+
 const MOCK_DATA: MandiRecord[] = [
     {
         state: 'Haryana',
@@ -20,7 +22,7 @@ const MOCK_DATA: MandiRecord[] = [
         min_price: '5800',
         max_price: '6200',
         modal_price: '6000',
-        arrival_date: '24/01/2026',
+        arrival_date: TODAY,
     },
     {
         state: 'Haryana',
@@ -31,7 +33,7 @@ const MOCK_DATA: MandiRecord[] = [
         min_price: '2400',
         max_price: '2500',
         modal_price: '2450',
-        arrival_date: '24/01/2026',
+        arrival_date: TODAY,
     },
     {
         state: 'Punjab',
@@ -42,7 +44,7 @@ const MOCK_DATA: MandiRecord[] = [
         min_price: '2350',
         max_price: '2450',
         modal_price: '2400',
-        arrival_date: '24/01/2026',
+        arrival_date: TODAY,
     },
 ];
 

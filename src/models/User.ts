@@ -22,6 +22,11 @@ const UserSchema: Schema<IUser> = new Schema({
         required: [true, 'Name is required'],
         trim: true,
     },
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true,
+    },
     location: {
         state: String,
         district: String,

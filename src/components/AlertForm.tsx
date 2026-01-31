@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useEffect, useRef } from 'react';
 import { createAlert } from '@/app/actions';
-import { Sprout, Bell, MapPin } from 'lucide-react';
+import { Sprout, Bell, MapPin, Trash2, Plus } from 'lucide-react';
 import clsx from 'clsx';
 import { useFormStatus } from 'react-dom';
 import { INDIAN_LOCATIONS } from '@/constants/locations';
@@ -30,14 +30,50 @@ function SubmitButton() {
     );
 }
 
-export default function AlertForm() {
+// ... imports
+
+interface AlertFormProps {
+    onSuccess?: () => void;
+}
+
+export default function AlertForm({ onSuccess }: AlertFormProps) {
     const [state, formAction] = useActionState(createAlert, initialState);
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Trigger onSuccess when alert is created successfully
+    useEffect(() => {
+        if (state?.success && onSuccess) {
+            const timer = setTimeout(() => {
+                onSuccess();
+            }, 2000); // Close after 2 seconds so user sees success message
+            return () => clearTimeout(timer);
+        }
+    }, [state?.success, onSuccess]);
+
     // Initialize from URL or default
     const [selectedState, setSelectedState] = useState(searchParams.get('state') || 'Haryana');
     const [selectedDistrict, setSelectedDistrict] = useState(searchParams.get('district') || 'Hisar');
+    const [mandiInput, setMandiInput] = useState(searchParams.get('mandi') || '');
+
+    // Schedule State
+    const [schedules, setSchedules] = useState<{ day: string; time: string }[]>([
+        { day: 'Everyday', time: '09:00' }
+    ]);
+    const [tempDay, setTempDay] = useState('Everyday');
+    const [tempTime, setTempTime] = useState('09:00');
+
+    const addSchedule = () => {
+        if (!tempDay || !tempTime) return;
+        setSchedules([...schedules, { day: tempDay, time: tempTime }]);
+    };
+
+    const removeSchedule = (index: number) => {
+        setSchedules(schedules.filter((_, i) => i !== index));
+    };
+
+    // Debounce timer ref for mandi search
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newState = e.target.value;
@@ -60,18 +96,36 @@ export default function AlertForm() {
         router.replace(`/prices?${params.toString()}`);
     }
 
+    // Debounced mandi search - waits 500ms after user stops typing
     const handleMandiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newMandi = e.target.value;
+        setMandiInput(newMandi);
 
-        // Update URL immediately so user sees filtering as they type
-        const params = new URLSearchParams(searchParams);
-        if (newMandi) {
-            params.set('mandi', newMandi);
-        } else {
-            params.delete('mandi');
+        // Clear previous timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
-        router.replace(`/prices?${params.toString()}`);
+
+        // Set new timer - URL updates after 500ms of no typing
+        debounceTimerRef.current = setTimeout(() => {
+            const params = new URLSearchParams(searchParams);
+            if (newMandi) {
+                params.set('mandi', newMandi);
+            } else {
+                params.delete('mandi');
+            }
+            router.replace(`/prices?${params.toString()}`);
+        }, 500);
     }
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, []);
 
     const districts = INDIAN_LOCATIONS[selectedState] || [];
 
@@ -115,7 +169,7 @@ export default function AlertForm() {
                                 name="phone"
                                 id="phone"
                                 required
-                                className="focus:ring-green-500 focus:border-green-500 block w-full pl-12 sm:text-sm border-gray-300 rounded-md py-3 border"
+                                className="text-gray-900 placeholder:text-gray-400 focus:ring-green-500 focus:border-green-500 block w-full pl-12 sm:text-sm border-gray-300 rounded-md py-3 border"
                                 placeholder="9876543210"
                             />
                         </div>
@@ -128,8 +182,19 @@ export default function AlertForm() {
                             name="name"
                             id="name"
                             required
-                            className="mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-3 border px-3"
+                            className="text-gray-900 placeholder:text-gray-400 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-3 border px-3"
                             placeholder="Ram Kumar"
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Optional - for confirmation)</label>
+                        <input
+                            type="email"
+                            name="email"
+                            id="email"
+                            className="text-gray-900 placeholder:text-gray-400 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-3 border px-3"
+                            placeholder="farmer@example.com"
                         />
                     </div>
 
@@ -141,7 +206,7 @@ export default function AlertForm() {
                                 id="state"
                                 value={selectedState}
                                 onChange={handleStateChange}
-                                className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                                className="text-gray-900 mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                             >
                                 <option value="">Select State</option>
                                 {Object.keys(INDIAN_LOCATIONS).map((st) => (
@@ -157,7 +222,7 @@ export default function AlertForm() {
                                 value={selectedDistrict}
                                 onChange={handleDistrictChange}
                                 disabled={!selectedState}
-                                className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm disabled:bg-gray-100"
+                                className="text-gray-900 mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm disabled:bg-gray-100"
                             >
                                 <option value="">Select District</option>
                                 {districts.map((d) => (
@@ -174,16 +239,89 @@ export default function AlertForm() {
                                 type="text"
                                 name="mandi"
                                 id="mandi"
-                                defaultValue={searchParams.get('mandi') || ''}
+                                value={mandiInput}
                                 onChange={handleMandiChange}
                                 placeholder="e.g. Adampur"
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                                className="text-gray-900 placeholder:text-gray-400 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                             />
                         </div>
                         <div>
                             <label htmlFor="commodity" className="block text-sm font-medium text-gray-700">Crop</label>
-                            <input type="text" name="commodity" id="commodity" defaultValue="Cotton" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm" />
+                            <input
+                                type="text"
+                                name="commodity"
+                                id="commodity"
+                                defaultValue="Cotton"
+                                className="text-gray-900 placeholder:text-gray-400 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                            />
                         </div>
+                    </div>
+
+                    {/* Advanced Schedule Builder */}
+                    <div className="border-t border-gray-200 pt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Notification Schedule</label>
+
+                        {/* List of Schedules */}
+                        <div className="space-y-2 mb-3">
+                            {schedules.map((sch, index) => (
+                                <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded-md border border-gray-200">
+                                    <span className="text-gray-800 text-sm font-medium">
+                                        {sch.day} at {sch.time}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSchedule(index)}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {schedules.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">No schedules added. Add one below.</p>
+                            )}
+                        </div>
+
+                        {/* Add New Schedule */}
+                        <div className="flex gap-2 items-end">
+                            <div className="w-1/2">
+                                <label htmlFor="tempDay" className="block text-xs text-gray-500 mb-1">Day</label>
+                                <select
+                                    id="tempDay"
+                                    value={tempDay}
+                                    onChange={(e) => setTempDay(e.target.value)}
+                                    className="block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 border py-2 px-2"
+                                >
+                                    <option value="Everyday">Everyday</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                    <option value="Saturday">Saturday</option>
+                                    <option value="Sunday">Sunday</option>
+                                </select>
+                            </div>
+                            <div className="w-1/3">
+                                <label htmlFor="tempTime" className="block text-xs text-gray-500 mb-1">Time</label>
+                                <input
+                                    type="time"
+                                    id="tempTime"
+                                    value={tempTime}
+                                    onChange={(e) => setTempTime(e.target.value)}
+                                    className="block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 border py-2 px-2"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={addSchedule}
+                                className="bg-green-100 text-green-700 p-2 rounded-md hover:bg-green-200 mb-[1px]"
+                            >
+                                <Plus className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <input type="hidden" name="schedules" value={JSON.stringify(schedules)} />
+                        <p className="mt-2 text-xs text-gray-500">We'll also send an immediate confirmation SMS.</p>
                     </div>
 
                     {/* Hidden target price (0) ensures alerts trigger for any positive market price */}

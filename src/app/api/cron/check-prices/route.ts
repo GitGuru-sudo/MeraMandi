@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Alert from '@/models/Alert';
-import User from '@/models/User';
+
 import { fetchMandiPrices, MandiRecord } from '@/services/govApi';
 import { sendSMS } from '@/services/notifier';
 
@@ -56,7 +56,45 @@ export async function GET(request: Request) {
                     lastNotified.getMonth() === today.getMonth() &&
                     lastNotified.getFullYear() === today.getFullYear();
 
-                if (!isSameDay) {
+                // Check Schedule Matching
+                const currentDay = today.toLocaleDateString('en-US', { weekday: 'long' }); // e.g., 'Monday'
+                const currentHour = today.getHours();
+                const currentMinute = today.getMinutes();
+
+                // Format: schedules [{ day: 'Monday', time: '14:30' }]
+                const schedules = (alert as any).schedules || [];
+
+                // If legacy 'preferredTime' exists (or default), map it to Everyday schedule for backward compat
+                if (schedules.length === 0 && (alert as any).preferredTime) {
+                    schedules.push({ day: 'Everyday', time: (alert as any).preferredTime });
+                }
+
+                // Match Logic:
+                // We match if at least one schedule matches NOW.
+                // "Everyday" matches any day.
+                // Time matches current HOUR (since we assume hourly cron for now, or loose matching).
+                // If User wants EXACT time (e.g. 14:34), cron must run every minute.
+                // Here we match HOUR for robustness if Minute variance exists.
+
+                const isScheduledNow = schedules.some((sch: any) => {
+                    const dayMatch = sch.day === 'Everyday' || sch.day === currentDay;
+                    const [h, m] = sch.time.split(':').map(Number);
+
+                    // Strict Mode: Match Hour. (Minute Check requires minute-level cron).
+                    // If cron runs hourly at :00, we match the hour.
+                    // If user set 14:30, and we run at 14:00 or 15:00... 
+                    // 14:00 -> 14 matches. 
+                    // Let's match if Hour matches.
+                    const hourMatch = h === currentHour;
+
+                    return dayMatch && hourMatch;
+                });
+
+                // Force flag logic
+                const { searchParams } = new URL(request.url);
+                const force = searchParams.get('force') === 'true';
+
+                if (!isSameDay && (isScheduledNow || force)) {
                     const user = alert.user as any; // Type assertion since specific TS type might require full User hydration
 
                     if (user && user.phone) {

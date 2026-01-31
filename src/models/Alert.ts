@@ -8,6 +8,11 @@ export interface IAlert extends Document {
     commodity: string;
     targetPrice: number;
     isActive: boolean;
+    schedules: {
+        day: string; // 'Monday', 'Tuesday', ..., 'Everyday'
+        time: string; // 'HH:mm'
+    }[];
+    email?: string;
     lastNotifiedAt?: Date;
     createdAt: Date;
 }
@@ -45,6 +50,15 @@ const AlertSchema: Schema<IAlert> = new Schema({
     isActive: {
         type: Boolean,
         default: true,
+    },
+    schedules: [{
+        day: { type: String, required: true },
+        time: { type: String, required: true }
+    }],
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true,
     },
     lastNotifiedAt: {
         type: Date,

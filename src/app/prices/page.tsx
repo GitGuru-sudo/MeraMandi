@@ -1,25 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PriceList from '@/components/PriceList';
+import AlertForm from '@/components/AlertForm';
 import { INDIAN_LOCATIONS } from '@/constants/locations';
+
+// Custom debounce hook for production-ready search
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+}
 
 export default function PricesPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [isDark, setIsDark] = useState(() => {
-        if (typeof document === 'undefined') return false;
-        return document.documentElement.classList.contains('dark');
-    });
-    const [language, setLanguage] = useState<'en' | 'hi'>(() => {
+    const [isDark, setIsDark] = useState(false);
+    const [language, setLanguage] = useState<'en' | 'hi'>('en');
+
+    useEffect(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+
         try {
             const saved = window.localStorage.getItem('language');
-            if (saved === 'en' || saved === 'hi') return saved;
-        } catch {
-        }
-        return 'en';
-    });
+            if (saved === 'en' || saved === 'hi') {
+                setLanguage(saved);
+            }
+        } catch { }
+    }, []);
 
     const translations = {
         en: {
@@ -63,6 +82,27 @@ export default function PricesPage() {
     const [selectedState, setSelectedState] = useState(searchParams.get('state') || '');
     const [selectedDistrict, setSelectedDistrict] = useState(searchParams.get('district') || '');
     const [searchQuery, setSearchQuery] = useState(searchParams.get('mandi') || '');
+    const [isSearching, setIsSearching] = useState(false);
+    const [showAlertModal, setShowAlertModal] = useState(false);
+
+    // Debounce search query by 500ms - only triggers after user stops typing
+    const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+    // Update URL only after debounce settles
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (selectedState) params.set('state', selectedState);
+        if (selectedDistrict) params.set('district', selectedDistrict);
+        if (debouncedSearchQuery) params.set('mandi', debouncedSearchQuery);
+
+        const newUrl = `/prices?${params.toString()}`;
+        const currentUrl = `/prices?${searchParams.toString()}`;
+
+        if (newUrl !== currentUrl) {
+            router.replace(newUrl);
+        }
+        setIsSearching(false);
+    }, [debouncedSearchQuery, selectedState, selectedDistrict, router, searchParams]);
 
     const districts = selectedState ? (INDIAN_LOCATIONS[selectedState] || []) : [];
 
@@ -89,12 +129,7 @@ export default function PricesPage() {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
         setSearchQuery(query);
-
-        const params = new URLSearchParams();
-        if (selectedState) params.set('state', selectedState);
-        if (selectedDistrict) params.set('district', selectedDistrict);
-        if (query) params.set('mandi', query);
-        router.push(`/prices?${params.toString()}`);
+        setIsSearching(true); // Show loading indicator while typing
     };
 
     const toggleDarkMode = () => {
@@ -194,7 +229,10 @@ export default function PricesPage() {
                                 <span className="material-symbols-outlined text-lg text-slate-400 group-hover:text-amber-700">file_download</span>
                                 {t('exportCsv')}
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-2.5 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 transition-all shadow-lg active:scale-95">
+                            <button
+                                onClick={() => setShowAlertModal(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 transition-all shadow-lg active:scale-95"
+                            >
                                 <span className="material-symbols-outlined text-lg">sms</span>
                                 {t('smsAlerts')}
                             </button>
@@ -260,16 +298,21 @@ export default function PricesPage() {
                                     placeholder={t('searchPlaceholder')}
                                 />
                                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                {isSearching && (
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2">
+                                        <span className="animate-spin inline-block w-4 h-4 border-2 border-amber-700 border-t-transparent rounded-full"></span>
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Price List */}
+                {/* Price List - uses debounced search to avoid excessive API calls */}
                 <PriceList
                     state={selectedState || undefined}
                     district={selectedDistrict || undefined}
-                    mandi={searchQuery || undefined}
+                    mandi={debouncedSearchQuery || undefined}
                 />
             </main>
 
@@ -320,6 +363,24 @@ export default function PricesPage() {
                     </div>
                 </div>
             </footer>
+
+            {/* SMS Alert Modal */}
+            {showAlertModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="relative max-h-[90vh] overflow-y-auto">
+                        <button
+                            onClick={() => setShowAlertModal(false)}
+                            className="absolute -top-2 -right-2 z-10 w-8 h-8 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            aria-label="Close modal"
+                        >
+                            <span className="material-symbols-outlined text-lg">close</span>
+                        </button>
+                        <Suspense fallback={<div className="bg-white rounded-xl p-8 text-center">Loading...</div>}>
+                            <AlertForm onSuccess={() => setShowAlertModal(false)} />
+                        </Suspense>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
