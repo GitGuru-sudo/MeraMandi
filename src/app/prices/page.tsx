@@ -1,386 +1,579 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import PriceList from '@/components/PriceList';
+import { useState, useEffect, Suspense, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import AlertForm from '@/components/AlertForm';
 import { INDIAN_LOCATIONS } from '@/constants/locations';
+import { INDIAN_LANGUAGES, TRANSLATIONS } from '@/constants/languages';
+import { Bell, X, LogOut, MessageSquare, ChevronLeft, ChevronRight, Search, Globe, Moon, Sun, User, Clock, Check } from 'lucide-react';
 
-// Custom debounce hook for production-ready search
-function useDebounce<T>(value: T, delay: number): T {
-    const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [value, delay]);
-
-    return debouncedValue;
+interface PriceRecord {
+    market: string;
+    state?: string;
+    commodity: string;
+    min_price: string;
+    max_price: string;
+    modal_price: string;
+    arrival_date: string;
 }
 
-export default function PricesPage() {
-    const router = useRouter();
+// Icon mapping for different commodities
+const getCropIcon = (commodity: string) => {
+    const name = commodity.toLowerCase();
+    if (name.includes('cotton')) return { icon: '🌿', bg: 'bg-blue-50 dark:bg-blue-500/10' };
+    if (name.includes('wheat')) return { icon: '🌾', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+    if (name.includes('rice') || name.includes('paddy')) return { icon: '🍚', bg: 'bg-yellow-50 dark:bg-yellow-500/10' };
+    if (name.includes('onion')) return { icon: '🧅', bg: 'bg-red-50 dark:bg-red-500/10' };
+    if (name.includes('potato')) return { icon: '🥔', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+    if (name.includes('tomato')) return { icon: '🍅', bg: 'bg-red-50 dark:bg-red-500/10' };
+    if (name.includes('carrot')) return { icon: '🥕', bg: 'bg-orange-50 dark:bg-orange-500/10' };
+    if (name.includes('castor')) return { icon: '🌱', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
+    if (name.includes('maize') || name.includes('corn')) return { icon: '🌽', bg: 'bg-yellow-50 dark:bg-yellow-500/10' };
+    if (name.includes('soyabean') || name.includes('soybean')) return { icon: '🫘', bg: 'bg-green-50 dark:bg-green-500/10' };
+    if (name.includes('groundnut') || name.includes('peanut')) return { icon: '🥜', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+    return { icon: '🌱', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
+};
+
+// Status badges
+const getStatus = (index: number, t: (k: string) => string) => {
+    const statuses = [
+        { label: t('steady') || 'STEADY', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-500/10' },
+        { label: t('rising') || 'RISING', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+        { label: t('stable') || 'STABLE', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+        { label: t('falling') || 'FALLING', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
+    ];
+    return statuses[index % statuses.length];
+};
+
+// Modal price color based on trend
+const getModalColor = (index: number) => {
+    const colors = ['text-green-500', 'text-blue-500', 'text-emerald-500', 'text-amber-500'];
+    return colors[index % colors.length];
+};
+
+function PricesContent() {
     const searchParams = useSearchParams();
-    const [isDark, setIsDark] = useState(false);
-    const [language, setLanguage] = useState<'en' | 'hi'>('en');
+    const router = useRouter();
 
-    useEffect(() => {
-        setIsDark(document.documentElement.classList.contains('dark'));
-
-        try {
-            const saved = window.localStorage.getItem('language');
-            if (saved === 'en' || saved === 'hi') {
-                setLanguage(saved);
-            }
-        } catch { }
-    }, []);
-
-    const translations = {
-        en: {
-            liveData: 'Live Data',
-            title: 'Live Mandi Prices',
-            description:
-                'Real-time commodity prices tracked across government-regulated Indian markets. Monitor daily fluctuations and market trends accurately.',
-            lastUpdated: 'Last Updated:',
-            exportCsv: 'Export CSV',
-            smsAlerts: 'SMS Alerts',
-            selectState: 'Select State',
-            allStates: 'All States',
-            selectDistrict: 'Select District',
-            allDistricts: 'All Districts',
-            searchCrop: 'Search Crop',
-            searchPlaceholder: 'Search commodity (e.g. Potato, Onion, Wheat...)',
-            backToHome: 'Back to Home',
-            language: 'Language',
-        },
-        hi: {
-            liveData: 'लाइव डेटा',
-            title: 'लाइव मंडी भाव',
-            description:
-                'सरकारी-नियंत्रित भारतीय बाजारों में रियल-टाइम कृषि जिंसों के भाव। रोज़ाना उतार-चढ़ाव और बाज़ार रुझानों को सटीक रूप से देखें।',
-            lastUpdated: 'अंतिम अपडेट:',
-            exportCsv: 'CSV डाउनलोड',
-            smsAlerts: 'SMS अलर्ट',
-            selectState: 'राज्य चुनें',
-            allStates: 'सभी राज्य',
-            selectDistrict: 'जिला चुनें',
-            allDistricts: 'सभी जिले',
-            searchCrop: 'फसल खोजें',
-            searchPlaceholder: 'जिंस खोजें (जैसे आलू, प्याज, गेहूं...)',
-            backToHome: 'होम पर वापस',
-            language: 'भाषा',
-        },
-    } as const;
-
-    const t = (key: keyof typeof translations.en) => translations[language][key];
-
-    const [selectedState, setSelectedState] = useState(searchParams.get('state') || '');
-    const [selectedDistrict, setSelectedDistrict] = useState(searchParams.get('district') || '');
-    const [searchQuery, setSearchQuery] = useState(searchParams.get('mandi') || '');
-    const [isSearching, setIsSearching] = useState(false);
+    const [selectedState, setSelectedState] = useState<string>('');
+    const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [showAlertModal, setShowAlertModal] = useState(false);
+    const [showLangModal, setShowLangModal] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [records, setRecords] = useState<PriceRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [darkMode, setDarkMode] = useState(false);
+    const [lang, setLang] = useState('en');
+    const itemsPerPage = 10;
+    const profileRef = useRef<HTMLDivElement>(null);
 
-    // Debounce search query by 500ms - only triggers after user stops typing
-    const debouncedSearchQuery = useDebounce(searchQuery, 500);
+    // Translation helper
+    const t = (key: string) => {
+        return TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en'][key] || key;
+    };
 
-    // Update URL only after debounce settles
+    // State Translation Helper
+    const tState = (stateName: string) => {
+        if (!stateName) return '';
+        return TRANSLATIONS[lang]?.states?.[stateName] || stateName;
+    };
+
     useEffect(() => {
-        const params = new URLSearchParams();
-        if (selectedState) params.set('state', selectedState);
-        if (selectedDistrict) params.set('district', selectedDistrict);
-        if (debouncedSearchQuery) params.set('mandi', debouncedSearchQuery);
+        // Read from URL params on mount
+        const urlState = searchParams.get('state');
+        const urlDistrict = searchParams.get('district');
 
-        const newUrl = `/prices?${params.toString()}`;
-        const currentUrl = `/prices?${searchParams.toString()}`;
+        if (urlState) setSelectedState(urlState);
+        if (urlDistrict) setSelectedDistrict(urlDistrict);
 
-        if (newUrl !== currentUrl) {
-            router.replace(newUrl);
+        checkAuth();
+
+        // Close profile menu on click outside
+        const handleClickOutside = (event: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setShowProfileMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [searchParams]);
+
+    useEffect(() => {
+        fetchPrices();
+    }, [selectedState, selectedDistrict]);
+
+    const checkAuth = async () => {
+        try {
+            const res = await fetch('/api/auth/me', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
         }
-        setIsSearching(false);
-    }, [debouncedSearchQuery, selectedState, selectedDistrict, router, searchParams]);
-
-    const districts = selectedState ? (INDIAN_LOCATIONS[selectedState] || []) : [];
-
-    const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newState = e.target.value;
-        setSelectedState(newState);
-        setSelectedDistrict('');
-
-        const params = new URLSearchParams();
-        if (newState) params.set('state', newState);
-        router.push(`/prices?${params.toString()}`);
     };
 
-    const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newDistrict = e.target.value;
-        setSelectedDistrict(newDistrict);
+    const fetchPrices = async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (selectedState) params.set('state', selectedState);
+            if (selectedDistrict) params.set('district', selectedDistrict);
 
-        const params = new URLSearchParams();
-        if (selectedState) params.set('state', selectedState);
-        if (newDistrict) params.set('district', newDistrict);
-        router.push(`/prices?${params.toString()}`);
+            const res = await fetch(`/api/prices?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                setRecords(data.records || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch prices:', error);
+        }
+        setLoading(false);
     };
 
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const query = e.target.value;
-        setSearchQuery(query);
-        setIsSearching(true); // Show loading indicator while typing
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            router.push('/home');
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
     };
 
-    const toggleDarkMode = () => {
-        setIsDark(!isDark);
-        if (!isDark) {
+
+
+    useEffect(() => {
+        // Initialize dark mode from localStorage
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme === 'dark') {
+            setDarkMode(true);
             document.documentElement.classList.add('dark');
         } else {
+            setDarkMode(false);
             document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleDarkMode = () => {
+        const newMode = !darkMode;
+        setDarkMode(newMode);
+        if (newMode) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
         }
     };
 
-    const currentDate = new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+    const districts = INDIAN_LOCATIONS[selectedState] || [];
+
+    // Filter by search query
+    const filteredRecords = records.filter((r) =>
+        r.commodity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.market.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
+
+    const now = new Date();
+    const lastUpdated = now.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
+    }) + ', ' + now.toLocaleTimeString('en-IN', {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: true
     });
 
     return (
-        <>
-            {/* Navbar */}
-            <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => router.push('/home')}
-                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                aria-label={t('backToHome')}
-                                type="button"
-                            >
-                                <span className="material-symbols-outlined text-lg">arrow_back</span>
-                            </button>
-                            <div className="w-10 h-10 bg-amber-700 flex items-center justify-center rounded-lg shadow-lg">
-                                <span className="material-symbols-outlined text-white">agriculture</span>
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-amber-700 dark:text-amber-600">Mera Mandi</span>
+        <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'dark bg-slate-900' : 'bg-gray-50'}`}>
+            {/* Header */}
+            <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+                <div className="flex items-center justify-between max-w-lg mx-auto">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-green-600 p-1.5 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xl">🌾</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <select
-                                    value={language}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setLanguage(value as 'en' | 'hi');
-                                        try {
-                                            window.localStorage.setItem('language', value);
-                                        } catch {
-                                        }
-                                    }}
-                                    className="bg-transparent text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-600 transition-colors cursor-pointer outline-none"
-                                    aria-label={t('language')}
-                                >
-                                    <option value="en">English</option>
-                                    <option value="hi">Hindi</option>
-                                </select>
-                            </div>
+                        <h1 className="font-bold text-lg tracking-tight text-slate-800 dark:text-white">{t('appTitle')}</h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={toggleDarkMode}
+                            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        >
+                            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+
+                        {/* Profile Dropdown */}
+                        <div className="relative" ref={profileRef}>
                             <button
-                                onClick={toggleDarkMode}
-                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-green-500 transition-all"
                             >
-                                <span className="material-symbols-outlined text-lg">
-                                    {isDark ? 'light_mode' : 'dark_mode'}
-                                </span>
+                                <span className="text-slate-500 text-xl">👤</span>
                             </button>
+
+                            {/* Dropdown Menu */}
+                            {showProfileMenu && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden z-50">
+                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                                            {user?.name || 'User'}
+                                        </p>
+                                        <p className="text-xs text-slate-500 truncate">
+                                            {user?.email || user?.phone}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => router.push('/profile')}
+                                        className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                                    >
+                                        <User className="w-4 h-4" />
+                                        {t('profile')}
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        {t('logout')}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-            </nav>
+            </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header Section */}
-                <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex h-2 w-2 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            <span className="text-xs font-bold uppercase tracking-wider text-green-600 dark:text-green-400">{t('liveData')}</span>
-                        </div>
-                        <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{t('title')}</h1>
-                        <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
-                            {t('description')}
-                        </p>
-                    </div>
-                    <div className="flex flex-col items-start md:items-end gap-2">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs text-slate-600 dark:text-slate-300 shadow-sm">
-                            <span className="material-symbols-outlined text-sm">schedule</span>
-                            <span className="font-bold">{t('lastUpdated')}</span>
-                            <span>{currentDate}</span>
-                        </div>
-                        <div className="flex gap-3">
-                            <button className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium hover:border-amber-700 dark:hover:border-amber-600 transition-all group shadow-sm">
-                                <span className="material-symbols-outlined text-lg text-slate-400 group-hover:text-amber-700">file_download</span>
-                                {t('exportCsv')}
-                            </button>
-                            <button
-                                onClick={() => setShowAlertModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 transition-all shadow-lg active:scale-95"
-                            >
-                                <span className="material-symbols-outlined text-lg">sms</span>
-                                {t('smsAlerts')}
-                            </button>
-                        </div>
+            <main className="max-w-lg mx-auto px-4 py-6 pb-24">
+                {/* Live Badge */}
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-green-500">{t('liveData')}</span>
+                </div>
+
+                {/* Title Section */}
+                <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('mainTitle')}</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {t('subTitle')}
+                    </p>
+                </div>
+
+                {/* Last Updated */}
+                <div className="mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {t('lastUpdated')}: {lastUpdated}
+                        </span>
                     </div>
                 </div>
 
-                {/* Filter Bar */}
-                <div className="mb-8">
-                    <div className="w-full bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap lg:flex-nowrap items-center gap-6">
-                        {/* State Select */}
-                        <div className="w-full lg:w-48 shrink-0">
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                    <button
+                        onClick={() => setShowLangModal(true)}
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3 rounded-xl font-semibold text-sm shadow-sm text-slate-800 dark:text-white"
+                    >
+                        <Globe className="w-5 h-5 text-slate-500" />
+                        <span>{t('language')}</span>
+                    </button>
+                    <button
+                        onClick={() => setShowAlertModal(true)}
+                        className="flex items-center justify-center gap-2 bg-orange-600 text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-orange-600/20"
+                    >
+                        <MessageSquare className="w-5 h-5" />
+                        <span>{t('settings')}</span>
+                    </button>
+                </div>
+
+                {/* Filters */}
+                <div className="space-y-3 mb-8">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-2 left-3 z-10">
                                 {t('selectState')}
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedState}
-                                    onChange={handleStateChange}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-3 pl-4 pr-10 text-sm focus:ring-2 focus:ring-amber-700/20 appearance-none cursor-pointer"
-                                >
-                                    <option value="">{t('allStates')}</option>
-                                    {Object.keys(INDIAN_LOCATIONS).map((st) => (
-                                        <option key={st} value={st}>{st}</option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                            </div>
+                            <select
+                                value={selectedState}
+                                onChange={(e) => {
+                                    setSelectedState(e.target.value);
+                                    setSelectedDistrict('');
+                                }}
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pt-7 pb-2 px-3 rounded-xl text-sm appearance-none focus:ring-orange-500 focus:border-orange-500 text-slate-800 dark:text-white"
+                            >
+                                <option value="">{t('allStates')}</option>
+                                {Object.keys(INDIAN_LOCATIONS).map((s) => (
+                                    <option key={s} value={s}>{tState(s)}</option>
+                                ))}
+                            </select>
                         </div>
-
-                        {/* District Select */}
-                        <div className="w-full lg:w-48 shrink-0">
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">
+                        <div className="relative">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute top-2 left-3 z-10">
                                 {t('selectDistrict')}
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedDistrict}
-                                    onChange={handleDistrictChange}
-                                    disabled={!selectedState}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-3 pl-4 pr-10 text-sm focus:ring-2 focus:ring-amber-700/20 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <option value="">{t('allDistricts')}</option>
-                                    {districts.map((d) => (
-                                        <option key={d} value={d}>{d}</option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                            </div>
+                            <select
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                                disabled={!selectedState}
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pt-7 pb-2 px-3 rounded-xl text-sm appearance-none focus:ring-orange-500 focus:border-orange-500 text-slate-800 dark:text-white disabled:opacity-50"
+                            >
+                                <option value="">{t('allDistricts')}</option>
+                                {districts.map((d: string) => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
                         </div>
-
-                        {/* Search Input */}
-                        <div className="flex-grow">
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">
-                                {t('searchCrop')}
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={handleSearch}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-3 pl-11 pr-4 text-sm focus:ring-2 focus:ring-amber-700/20"
-                                    placeholder={t('searchPlaceholder')}
-                                />
-                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                                {isSearching && (
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2">
-                                        <span className="animate-spin inline-block w-4 h-4 border-2 border-amber-700 border-t-transparent rounded-full"></span>
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={t('searchPlaceholder')}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3.5 pl-10 pr-4 rounded-xl text-sm focus:ring-orange-500 focus:border-orange-500 placeholder:text-slate-400 text-slate-800 dark:text-white"
+                        />
                     </div>
                 </div>
 
-                {/* Price List - uses debounced search to avoid excessive API calls */}
-                <PriceList
-                    state={selectedState || undefined}
-                    district={selectedDistrict || undefined}
-                    mandi={debouncedSearchQuery || undefined}
-                />
+                {/* Results Header */}
+                <div className="flex items-center justify-between px-1 mb-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-orange-500">📊</span>
+                        <h3 className="font-bold text-slate-800 dark:text-white">{t('mandiPrices')}</h3>
+                    </div>
+                    <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                        {filteredRecords.length} {t('resultsFound')}
+                    </span>
+                </div>
+
+                {/* Loading State */}
+                {loading ? (
+                    <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 animate-pulse">
+                                <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-4"></div>
+                                <div className="h-12 bg-slate-100 dark:bg-slate-700 rounded mb-4"></div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="h-10 bg-slate-100 dark:bg-slate-700 rounded"></div>
+                                    <div className="h-10 bg-slate-100 dark:bg-slate-700 rounded"></div>
+                                    <div className="h-10 bg-slate-100 dark:bg-slate-700 rounded"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : filteredRecords.length === 0 ? (
+                    <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl">🔍</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">{t('noData')}</h3>
+                        <p className="text-slate-500 text-sm">{t('tryDemo')}</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Price Cards */}
+                        <div className="space-y-4">
+                            {paginatedRecords.map((record, index) => {
+                                const cropStyle = getCropIcon(record.commodity);
+                                const status = getStatus(index, t);
+                                const modalColor = getModalColor(index);
+
+                                return (
+                                    <div
+                                        key={`${record.market}-${record.commodity}-${index}`}
+                                        className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm"
+                                    >
+                                        {/* Card Header */}
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 dark:text-white text-base">
+                                                    {record.market} APMC
+                                                </h4>
+                                                <p className="text-xs text-slate-500">{tState(record.state || selectedState) || 'India'}</p>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded-md ${status.bg} ${status.color} text-[10px] font-bold tracking-wider uppercase`}>
+                                                {status.label}
+                                            </span>
+                                        </div>
+
+                                        {/* Crop Info */}
+                                        <div className="flex items-center gap-3 mb-4 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg">
+                                            <div className={`h-10 w-10 ${cropStyle.bg} rounded-full flex items-center justify-center text-xl`}>
+                                                {cropStyle.icon}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{t('crop')}</p>
+                                                <p className="font-bold text-slate-800 dark:text-white">{record.commodity}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Prices */}
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="text-center">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t('min')}</p>
+                                                <p className="font-bold text-slate-800 dark:text-white">
+                                                    ₹{Number(record.min_price).toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t('max')}</p>
+                                                <p className="font-bold text-slate-800 dark:text-white">
+                                                    ₹{Number(record.max_price).toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t('modal')}</p>
+                                                <p className={`font-bold ${modalColor}`}>
+                                                    ₹{Number(record.modal_price).toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                            <span className="text-[10px] font-medium text-slate-400">
+                                                {t('date')}: {record.arrival_date}
+                                            </span>
+                                            {/* Details button removed as per request */}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="mt-8 flex items-center justify-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 disabled:opacity-50"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+
+                                {[...Array(Math.min(3, totalPages))].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold text-sm ${currentPage === pageNum
+                                                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
+                                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                                                }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+
+                                {totalPages > 3 && (
+                                    <>
+                                        <span className="text-slate-400 px-1">...</span>
+                                        <button
+                                            onClick={() => setCurrentPage(totalPages)}
+                                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm"
+                                        >
+                                            {totalPages}
+                                        </button>
+                                    </>
+                                )}
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
             </main>
 
-            {/* Footer */}
-            <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 mt-12 border-t border-slate-200 dark:border-slate-800">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-amber-700 flex items-center justify-center rounded-lg">
-                                <span className="material-symbols-outlined text-white text-sm">agriculture</span>
-                            </div>
-                            <span className="text-lg font-bold text-amber-700 dark:text-amber-600">Mera Mandi</span>
-                        </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Connecting farmers with real-time market insights. Our platform aggregates data from APMC centers across India to provide transparent pricing.
-                        </p>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400">Quick Links</h4>
-                        <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
-                            <li><a className="hover:text-amber-700 transition-colors" href="#">Market Analysis</a></li>
-                            <li><a className="hover:text-amber-700 transition-colors" href="#">Historical Data</a></li>
-                            <li><a className="hover:text-amber-700 transition-colors" href="#">Commodity News</a></li>
-                            <li><a className="hover:text-amber-700 transition-colors" href="#">Support Center</a></li>
-                        </ul>
-                    </div>
-                    <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-2xl">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Subscribe to Daily Prices</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Get daily price updates for your favorite mandis directly on your WhatsApp or via SMS.</p>
-                        <form className="flex gap-2">
-                            <input
-                                className="flex-1 bg-white dark:bg-slate-800 border-none rounded-xl text-sm px-4 focus:ring-2 focus:ring-amber-700/20"
-                                placeholder="Mobile Number"
-                                type="tel"
-                            />
-                            <button className="bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-800 transition-all">
-                                Join
+            {/* Language Modal */}
+            {showLangModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800">
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
+                            <h3 className="font-bold text-lg dark:text-white">{t('language')}</h3>
+                            <button onClick={() => setShowLangModal(false)}>
+                                <X className="w-5 h-5 text-slate-500" />
                             </button>
-                        </form>
-                    </div>
-                </div>
-                <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <p className="text-xs text-slate-400">© 2026 Mera Mandi - Empowering Agriculture with Data.</p>
-                    <div className="flex gap-6 text-xs text-slate-400 font-medium">
-                        <a className="hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">Privacy Policy</a>
-                        <a className="hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">Terms of Service</a>
-                        <a className="hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">Government API Source</a>
-                    </div>
-                </div>
-            </footer>
-
-            {/* SMS Alert Modal */}
-            {showAlertModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="relative max-h-[90vh] overflow-y-auto">
-                        <button
-                            onClick={() => setShowAlertModal(false)}
-                            className="absolute -top-2 -right-2 z-10 w-8 h-8 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                            aria-label="Close modal"
-                        >
-                            <span className="material-symbols-outlined text-lg">close</span>
-                        </button>
-                        <Suspense fallback={<div className="bg-white rounded-xl p-8 text-center">Loading...</div>}>
-                            <AlertForm onSuccess={() => setShowAlertModal(false)} />
-                        </Suspense>
+                        </div>
+                        <div className="p-2 gap-1 grid grid-cols-1">
+                            {INDIAN_LANGUAGES.map((l) => (
+                                <button
+                                    key={l.code}
+                                    onClick={() => {
+                                        setLang(l.code);
+                                        setShowLangModal(false);
+                                    }}
+                                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-left font-medium transition-colors ${lang === l.code
+                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                                        }`}
+                                >
+                                    <span>{l.name}</span>
+                                    {lang === l.code && <Check className="w-5 h-5" />}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
-        </>
+
+            {/* Alert Modal */}
+            {showAlertModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                        <button
+                            onClick={() => setShowAlertModal(false)}
+                            className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full z-10"
+                        >
+                            <X className="w-5 h-5 text-slate-500" />
+                        </button>
+                        <AlertForm
+                            onSuccess={() => setShowAlertModal(false)}
+                            user={user}
+                            state={selectedState}
+                            district={selectedDistrict}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function PricesPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600 dark:text-slate-400">Loading prices...</p>
+                </div>
+            </div>
+        }>
+            <PricesContent />
+        </Suspense>
     );
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import Image from 'next/image';
-import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, Globe, TrendingUp } from 'lucide-react';
+import AuthModal from '@/components/AuthModal';
+import { useRouter } from 'next/navigation';
 
 const languages = [
   { code: 'en', name: 'English', native: 'English' },
@@ -32,9 +33,39 @@ const translations: Record<string, { tagline: string; seePrice: string; welcome:
 export default function HomePage() {
   const [selectedLang, setSelectedLang] = useState('en');
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
 
   const t = translations[selectedLang];
   const currentLangData = languages.find(l => l.code === selectedLang);
+
+  useEffect(() => {
+    // Check if user is logged in
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'include' });
+      setIsLoggedIn(response.ok);
+    } catch (error) {
+      setIsLoggedIn(false);
+    }
+  };
+
+  const handleSeePrices = () => {
+    if (isLoggedIn) {
+      router.push('/prices');
+    } else {
+      setAuthModalOpen(true);
+    }
+  };
+
+  const handleAuthSuccess = (user: any) => {
+    setIsLoggedIn(true);
+    router.push('/prices');
+  };
 
   return (
     <main className="home-page">
@@ -49,6 +80,13 @@ export default function HomePage() {
         />
         <div className="bg-overlay"></div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
 
       {/* Navbar */}
       <nav className="navbar">
@@ -96,14 +134,14 @@ export default function HomePage() {
         <h1 className="hero-title">MeraMandi</h1>
         <p className="hero-tagline">{t.tagline}</p>
 
-        <Link href="/prices" className="cta-button">
+        <button onClick={handleSeePrices} className="cta-button">
           <span className="btn-bg"></span>
           <span className="btn-content">
             <TrendingUp className="w-6 h-6" />
             <span>{t.seePrice}</span>
           </span>
           <span className="btn-shine"></span>
-        </Link>
+        </button>
       </div>
 
       <style jsx>{`

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Alert from '@/models/Alert';
 
-import { fetchMandiPrices, MandiRecord } from '@/services/govApi';
+import { fetchMandiPrices } from '@/services/govApi';
 import { sendSMS } from '@/services/notifier';
 
 // This route should be protected (e.g., with a secret key) in production
@@ -14,110 +14,108 @@ export async function GET(request: Request) {
         await dbConnect();
 
         // 1. Fetch latest prices
-        const prices = await fetchMandiPrices(process.env.GOV_API_KEY);
-        console.log(`Fetched ${prices.length} price records.`);
+        const allPrices = await fetchMandiPrices(process.env.GOV_API_KEY);
+        console.log(`Fetched ${allPrices.length} price records.`);
 
-        let alertsSent = 0;
+        // 2. Fetch all active alerts
+        const activeAlerts = await Alert.find({ isActive: true }).populate('user');
+
+        let alertsSentCount = 0;
+        let smsSentCountCount = 0;
         let errors = 0;
 
-        // 2. Iterate through each price record
-        for (const record of prices) {
-            // Normalize data for matching
-            const recordState = record.state;
-            const recordDistrict = record.district;
-            const recordMandi = record.market;
-            const recordCommodity = record.commodity;
-            const currentPrice = parseFloat(record.modal_price);
+        const { searchParams } = new URL(request.url);
+        const force = searchParams.get('force') === 'true';
 
-            // 3. Find matching alerts in DB
-            // We look for alerts where:
-            // - Location matches
-            // - Commodity matches
-            // - Target Price <= Current Price (Alert if price is GOOD/HIGH for selling)
-            // - OR Target Price >= Current Price (Alert if price is LOW for buying?) -> Usually farmers want HIGH prices.
-            // Let's assume farmers want to know if price EXCEEDS their expectation.
+        // 3. Process each alert
+        for (const alert of activeAlerts) {
+            const user = alert.user as any;
+            if (!user || !user.phone) continue;
 
-            const matchingAlerts = await Alert.find({
-                state: { $regex: new RegExp(`^${recordState}$`, 'i') }, // Case insensitive match
-                district: { $regex: new RegExp(`^${recordDistrict}$`, 'i') },
-                mandi: { $regex: new RegExp(`^${recordMandi}$`, 'i') },
-                commodity: { $regex: new RegExp(`^${recordCommodity}$`, 'i') },
-                isActive: true,
-                targetPrice: { $lte: currentPrice }, // Alert if market price is higher than user's target
-            }).populate('user');
+            // Check if we should send now
+            const today = new Date();
+            const lastNotified = alert.lastNotifiedAt ? new Date(alert.lastNotifiedAt) : null;
+            const isSameDay = lastNotified &&
+                lastNotified.getDate() === today.getDate() &&
+                lastNotified.getMonth() === today.getMonth() &&
+                lastNotified.getFullYear() === today.getFullYear();
 
-            for (const alert of matchingAlerts) {
-                // Check if we already notified today (simple check to avoid spam)
-                const today = new Date();
-                const lastNotified = alert.lastNotifiedAt ? new Date(alert.lastNotifiedAt) : null;
+            const currentDay = today.toLocaleDateString('en-US', { weekday: 'long' });
+            const currentHour = today.getHours();
+            const schedules = (alert as any).schedules || [];
 
-                const isSameDay = lastNotified &&
-                    lastNotified.getDate() === today.getDate() &&
-                    lastNotified.getMonth() === today.getMonth() &&
-                    lastNotified.getFullYear() === today.getFullYear();
+            const isScheduledNow = schedules.some((sch: any) => {
+                const dayMatch = sch.day === 'Everyday' || sch.day === currentDay;
+                const [h] = sch.time.split(':').map(Number);
+                return dayMatch && h === currentHour;
+            });
 
-                // Check Schedule Matching
-                const currentDay = today.toLocaleDateString('en-US', { weekday: 'long' }); // e.g., 'Monday'
-                const currentHour = today.getHours();
-                const currentMinute = today.getMinutes();
+            if (!force && (isSameDay || !isScheduledNow)) continue;
 
-                // Format: schedules [{ day: 'Monday', time: '14:30' }]
-                const schedules = (alert as any).schedules || [];
+            // Identify User Location and Commodity Needs
+            const targetState = alert.state;
+            const targetDistrict = alert.district;
+            const targetCommodity = alert.commodity;
+            const targetMandi = alert.mandi;
 
-                // If legacy 'preferredTime' exists (or default), map it to Everyday schedule for backward compat
-                if (schedules.length === 0 && (alert as any).preferredTime) {
-                    schedules.push({ day: 'Everyday', time: (alert as any).preferredTime });
+            // API Lookup (from our cached allPrices)
+            const matches = allPrices.filter((p: any) => {
+                const stateMatch = p.state.toLowerCase() === targetState.toLowerCase();
+                const districtMatch = p.district.toLowerCase() === targetDistrict.toLowerCase();
+                const commodityMatch = (targetCommodity === 'All' || targetCommodity === 'All Crops') || p.commodity.toLowerCase() === targetCommodity.toLowerCase();
+                const mandiMatch = (targetMandi === 'All' || targetMandi === 'All Mandis' || !targetMandi) || p.market.toLowerCase() === targetMandi.toLowerCase();
+                return stateMatch && districtMatch && commodityMatch && mandiMatch;
+            });
+
+            if (matches.length > 0) {
+                // Calculate market stats
+                const minVal = Math.min(...matches.map((p: any) => parseFloat(p.min_price)));
+                const maxVal = Math.max(...matches.map((p: any) => parseFloat(p.max_price)));
+                const modalAvg = matches.reduce((acc: number, p: any) => acc + parseFloat(p.modal_price), 0) / matches.length;
+                const modalVal = Math.round(modalAvg);
+
+                // Format Phone Number
+                let toPhone = user.phone.replace(/\D/g, '');
+                if (toPhone.length === 10) {
+                    if (/^[6-9]/.test(toPhone)) toPhone = `+91${toPhone}`;
+                    else toPhone = `+1${toPhone}`;
+                } else if (!toPhone.startsWith('+')) toPhone = `+${toPhone}`;
+
+                // Trigger 3 Separate SMS sequentially
+                const commodityText = targetCommodity === 'All' || targetCommodity === 'All Crops' ? 'Crops' : targetCommodity;
+
+                const msgs = [
+                    `The lowest rate for ${commodityText} in ${targetDistrict} today is ₹${minVal}`,
+                    `The highest rate for ${commodityText} in ${targetDistrict} today is ₹${maxVal}`,
+                    `The usual market rate for ${commodityText} in ${targetDistrict} is ₹${modalVal}`
+                ];
+
+                let allSent = true;
+                for (const body of msgs) {
+                    const sent = await sendSMS(toPhone, body);
+                    if (sent) smsSentCountCount++;
+                    else allSent = false;
                 }
 
-                // Match Logic:
-                // We match if at least one schedule matches NOW.
-                // "Everyday" matches any day.
-                // Time matches current HOUR (since we assume hourly cron for now, or loose matching).
-                // If User wants EXACT time (e.g. 14:34), cron must run every minute.
-                // Here we match HOUR for robustness if Minute variance exists.
-
-                const isScheduledNow = schedules.some((sch: any) => {
-                    const dayMatch = sch.day === 'Everyday' || sch.day === currentDay;
-                    const [h, m] = sch.time.split(':').map(Number);
-
-                    // Strict Mode: Match Hour. (Minute Check requires minute-level cron).
-                    // If cron runs hourly at :00, we match the hour.
-                    // If user set 14:30, and we run at 14:00 or 15:00... 
-                    // 14:00 -> 14 matches. 
-                    // Let's match if Hour matches.
-                    const hourMatch = h === currentHour;
-
-                    return dayMatch && hourMatch;
-                });
-
-                // Force flag logic
-                const { searchParams } = new URL(request.url);
-                const force = searchParams.get('force') === 'true';
-
-                if (!isSameDay && (isScheduledNow || force)) {
-                    const user = alert.user as any; // Type assertion since specific TS type might require full User hydration
-
-                    if (user && user.phone) {
-                        const message = `KISAN ALERT: ${recordCommodity} in ${recordMandi} is now ₹${currentPrice}/quintal. This is above your target of ₹${alert.targetPrice}.`;
-
-                        const sent = await sendSMS(user.phone, message);
-
-                        if (sent) {
-                            alert.lastNotifiedAt = new Date();
-                            await alert.save();
-                            alertsSent++;
-                        } else {
-                            errors++;
-                        }
-                    }
+                if (allSent) {
+                    alert.lastNotifiedAt = new Date();
+                    await alert.save();
+                    alertsSentCount++;
+                } else {
+                    errors++;
                 }
             }
         }
 
         return NextResponse.json({
             success: true,
-            message: 'Cron job executed',
-            stats: { alertsSent, errors }
+            message: `${smsSentCountCount} SMS sent`,
+            stats: {
+                alertsProcessed: activeAlerts.length,
+                usersNotified: alertsSentCount,
+                totalSmsDispatched: smsSentCountCount,
+                errors
+            }
         });
 
     } catch (error: any) {

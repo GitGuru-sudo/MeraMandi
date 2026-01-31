@@ -1,12 +1,10 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import { createAlert } from '@/app/actions';
-import { Sprout, Bell, MapPin, Trash2, Plus } from 'lucide-react';
+import { Bell, Trash2, Plus, Clock, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { useFormStatus } from 'react-dom';
-import { INDIAN_LOCATIONS } from '@/constants/locations';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 const initialState = {
     message: '',
@@ -21,40 +19,34 @@ function SubmitButton() {
             type="submit"
             disabled={pending}
             className={clsx(
-                "w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors",
-                pending && "opacity-50 cursor-not-allowed"
+                "w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold tracking-wide text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all",
+                pending && "opacity-70 cursor-not-allowed"
             )}
         >
-            {pending ? 'Saving...' : 'Set Alert'}
+            {pending ? 'Saving...' : 'Save Schedule'}
         </button>
     );
 }
 
-// ... imports
-
 interface AlertFormProps {
     onSuccess?: () => void;
+    user?: any; // Passed from parent
+    state?: string;
+    district?: string;
 }
 
-export default function AlertForm({ onSuccess }: AlertFormProps) {
+export default function AlertForm({ onSuccess, user, state: propState, district: propDistrict }: AlertFormProps) {
     const [state, formAction] = useActionState(createAlert, initialState);
-    const router = useRouter();
-    const searchParams = useSearchParams();
 
     // Trigger onSuccess when alert is created successfully
     useEffect(() => {
         if (state?.success && onSuccess) {
             const timer = setTimeout(() => {
                 onSuccess();
-            }, 2000); // Close after 2 seconds so user sees success message
+            }, 2000);
             return () => clearTimeout(timer);
         }
     }, [state?.success, onSuccess]);
-
-    // Initialize from URL or default
-    const [selectedState, setSelectedState] = useState(searchParams.get('state') || 'Haryana');
-    const [selectedDistrict, setSelectedDistrict] = useState(searchParams.get('district') || 'Hisar');
-    const [mandiInput, setMandiInput] = useState(searchParams.get('mandi') || '');
 
     // Schedule State
     const [schedules, setSchedules] = useState<{ day: string; time: string }[]>([
@@ -72,271 +64,134 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
         setSchedules(schedules.filter((_, i) => i !== index));
     };
 
-    // Debounce timer ref for mandi search
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-    const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newState = e.target.value;
-        setSelectedState(newState);
-        setSelectedDistrict(''); // Reset district when state changes
-
-        // Convert to URL params for Server Component to see
-        const params = new URLSearchParams(searchParams);
-        params.set('state', newState);
-        params.delete('district');
-        router.replace(`/prices?${params.toString()}`);
-    };
-
-    const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newDistrict = e.target.value;
-        setSelectedDistrict(newDistrict);
-
-        const params = new URLSearchParams(searchParams);
-        params.set('district', newDistrict);
-        router.replace(`/prices?${params.toString()}`);
-    }
-
-    // Debounced mandi search - waits 500ms after user stops typing
-    const handleMandiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newMandi = e.target.value;
-        setMandiInput(newMandi);
-
-        // Clear previous timer
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
-        // Set new timer - URL updates after 500ms of no typing
-        debounceTimerRef.current = setTimeout(() => {
-            const params = new URLSearchParams(searchParams);
-            if (newMandi) {
-                params.set('mandi', newMandi);
-            } else {
-                params.delete('mandi');
-            }
-            router.replace(`/prices?${params.toString()}`);
-        }, 500);
-    }
-
-    // Cleanup timer on unmount
-    useEffect(() => {
-        return () => {
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
-        };
-    }, []);
-
-    const districts = INDIAN_LOCATIONS[selectedState] || [];
-
     return (
-        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden mb-8">
+        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
             {/* Header */}
-            <div className="bg-green-600 p-6 text-center">
-                <div className="flex justify-center mb-4">
-                    <div className="bg-white dark:bg-slate-800 p-3 rounded-full">
-                        <Sprout className="h-8 w-8 text-green-600" />
-                    </div>
+            <div className="bg-green-600 px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Bell className="w-5 h-5 text-green-100" />
+                        SMS Alerts
+                    </h2>
+                    <p className="text-green-100 text-xs mt-0.5 opacity-90">Customize your price notifications</p>
                 </div>
-                <h1 className="text-3xl font-bold text-white">Kisan Alert</h1>
-                <p className="text-green-100 mt-2">get notified when crop prices rise</p>
             </div>
 
             {/* Form */}
-            <div className="p-8">
+            <div className="p-6">
                 <form action={formAction} className="space-y-6">
 
                     {state?.success && (
-                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
-                            <strong className="font-bold">Success! </strong>
-                            <span className="block sm:inline">{state.message}</span>
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg flex items-center gap-2" role="alert">
+                            <span className="bg-green-100 dark:bg-green-800 p-1 rounded-full"><Info className="w-4 h-4" /></span>
+                            <span className="text-sm font-medium">{state.message}</span>
                         </div>
                     )}
                     {state?.message && !state?.success && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-                            <span className="block sm:inline">{state.message}</span>
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg" role="alert">
+                            <span className="text-sm font-medium">{state.message}</span>
                         </div>
                     )}
 
-                    <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Phone Number</label>
-                        <div className="mt-1 relative rounded-md shadow-sm">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <span className="text-gray-500 sm:text-sm">+91</span>
-                            </div>
-                            <input
-                                type="tel"
-                                name="phone"
-                                id="phone"
-                                required
-                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 focus:ring-green-500 focus:border-green-500 block w-full pl-12 sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border"
-                                placeholder="9876543210"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Your Name</label>
-                        <input
-                            type="text"
-                            name="name"
-                            id="name"
-                            required
-                            className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border px-3"
-                            placeholder="Ram Kumar"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Email (Optional - for confirmation)</label>
-                        <input
-                            type="email"
-                            name="email"
-                            id="email"
-                            className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border px-3"
-                            placeholder="farmer@example.com"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-slate-300">State</label>
-                            <select
-                                name="state"
-                                id="state"
-                                value={selectedState}
-                                onChange={handleStateChange}
-                                className="text-gray-900 dark:text-white mt-1 block w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                            >
-                                <option value="">Select State</option>
-                                {Object.keys(INDIAN_LOCATIONS).map((st) => (
-                                    <option key={st} value={st}>{st}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="district" className="block text-sm font-medium text-gray-700 dark:text-slate-300">District</label>
-                            <select
-                                name="district"
-                                id="district"
-                                value={selectedDistrict}
-                                onChange={handleDistrictChange}
-                                disabled={!selectedState}
-                                className="text-gray-900 dark:text-white mt-1 block w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-slate-700"
-                            >
-                                <option value="">Select District</option>
-                                {districts.map((d) => (
-                                    <option key={d} value={d}>{d}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="mandi" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Mandi (Market)</label>
-                            <input
-                                type="text"
-                                name="mandi"
-                                id="mandi"
-                                value={mandiInput}
-                                onChange={handleMandiChange}
-                                placeholder="e.g. Adampur"
-                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 block w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="commodity" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Crop</label>
-                            <input
-                                type="text"
-                                name="commodity"
-                                id="commodity"
-                                defaultValue="Cotton"
-                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 block w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                            />
-                        </div>
-                    </div>
+                    {/* Hidden Context Fields (Simplifying the UX) */}
+                    <input type="hidden" name="name" value={user?.name || 'Guest'} />
+                    <input type="hidden" name="phone" value={user?.phone || ''} />
+                    <input type="hidden" name="email" value={user?.email || ''} />
+                    <input type="hidden" name="state" value={propState || 'Haryana'} />
+                    <input type="hidden" name="district" value={propDistrict || 'Hisar'} />
+                    <input type="hidden" name="mandi" value="" /> {/* Default to general district alerts */}
+                    <input type="hidden" name="commodity" value={user?.preferredCrop || 'All Crops'} />
+                    <input type="hidden" name="targetPrice" value="0" />
 
                     {/* Advanced Schedule Builder */}
-                    <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Notification Schedule</label>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                        <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">
+                            <Clock className="w-4 h-4 text-orange-500" />
+                            Notification Schedule
+                        </label>
 
                         {/* List of Schedules */}
-                        <div className="space-y-2 mb-3">
+                        <div className="space-y-2 mb-4">
                             {schedules.map((sch, index) => (
-                                <div key={index} className="flex justify-between items-center bg-gray-50 dark:bg-slate-800 p-2 rounded-md border border-gray-200 dark:border-slate-700">
-                                    <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">
-                                        {sch.day} at {sch.time}
+                                <div key={index} className="flex justify-between items-center bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                    <span className="text-slate-800 dark:text-slate-200 text-sm font-medium">
+                                        <span className="text-slate-400 font-normal mr-1">Every</span>
+                                        {sch.day}
+                                        <span className="text-slate-300 mx-2">|</span>
+                                        {sch.time}
                                     </span>
                                     <button
                                         type="button"
                                         onClick={() => removeSchedule(index)}
-                                        className="text-red-500 hover:text-red-700 p-1"
+                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-full transition-colors"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             ))}
                             {schedules.length === 0 && (
-                                <p className="text-sm text-gray-500 italic">No schedules added. Add one below.</p>
+                                <div className="text-center py-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                                    <p className="text-xs text-slate-400">No schedules set.</p>
+                                </div>
                             )}
                         </div>
 
                         {/* Add New Schedule */}
-                        <div className="flex gap-2 items-end">
-                            <div className="w-1/2">
-                                <label htmlFor="tempDay" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Day</label>
+                        <div className="flex gap-2 items-end bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="flex-1">
+                                <label htmlFor="tempDay" className="sr-only">Day</label>
                                 <select
                                     id="tempDay"
                                     value={tempDay}
                                     onChange={(e) => setTempDay(e.target.value)}
-                                    className="block w-full text-sm border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white dark:bg-slate-800 border py-2 px-2"
+                                    className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 font-medium"
                                 >
-                                    <option value="Everyday">Everyday</option>
-                                    <option value="Monday">Monday</option>
-                                    <option value="Tuesday">Tuesday</option>
-                                    <option value="Wednesday">Wednesday</option>
-                                    <option value="Thursday">Thursday</option>
-                                    <option value="Friday">Friday</option>
-                                    <option value="Saturday">Saturday</option>
-                                    <option value="Sunday">Sunday</option>
+                                    <option value="Everyday" className="dark:bg-slate-800">Everyday</option>
+                                    <option value="Monday" className="dark:bg-slate-800">Monday</option>
+                                    <option value="Tuesday" className="dark:bg-slate-800">Tuesday</option>
+                                    <option value="Wednesday" className="dark:bg-slate-800">Wednesday</option>
+                                    <option value="Thursday" className="dark:bg-slate-800">Thursday</option>
+                                    <option value="Friday" className="dark:bg-slate-800">Friday</option>
+                                    <option value="Saturday" className="dark:bg-slate-800">Saturday</option>
+                                    <option value="Sunday" className="dark:bg-slate-800">Sunday</option>
                                 </select>
                             </div>
-                            <div className="w-1/3">
-                                <label htmlFor="tempTime" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Time</label>
+                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                            <div className="w-24">
+                                <label htmlFor="tempTime" className="sr-only">Time</label>
                                 <input
                                     type="time"
                                     id="tempTime"
                                     value={tempTime}
                                     onChange={(e) => setTempTime(e.target.value)}
-                                    className="block w-full text-sm border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white dark:bg-slate-800 border py-2 px-2"
+                                    className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 text-right font-medium"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={addSchedule}
-                                className="bg-green-100 text-green-700 p-2 rounded-md hover:bg-green-200 mb-[1px]"
+                                className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm ml-2"
                             >
-                                <Plus className="h-5 w-5" />
+                                <Plus className="h-4 w-4" />
                             </button>
                         </div>
                         <input type="hidden" name="schedules" value={JSON.stringify(schedules)} />
-                        <p className="mt-2 text-xs text-gray-500">We'll also send an immediate confirmation SMS.</p>
+
+                        <p className="mt-3 text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">
+                            <Info className="w-3 h-3" />
+                            We'll send an immediate confirmation SMS.
+                        </p>
                     </div>
 
-                    {/* Hidden target price (0) ensures alerts trigger for any positive market price */}
-                    <input type="hidden" name="targetPrice" value="0" />
+                    {!user?.phone && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg text-xs">
+                            ⚠️ You are not logged in. SMS features may require account setup.
+                        </div>
+                    )}
 
                     <SubmitButton />
 
                 </form>
-            </div>
-
-            <div className="bg-gray-50 dark:bg-slate-800 px-4 py-4 sm:px-6">
-                <div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-                    <Bell className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
-                    <span>Alerts sent via SMS daily at 11:30 AM</span>
-                </div>
             </div>
         </div>
     );

@@ -9,9 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google-cloud/translate": "^9.3.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/nodemailer": "^7.0.9",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "clx": "^1.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "locations": "^0.0.2",
     "lucide-react": "^0.563.0",
     "mongoose": "^9.1.5",
     "next": "^16.1.6",

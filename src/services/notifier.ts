@@ -8,6 +8,8 @@ const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 const client = (accountSid && authToken) ? twilio(accountSid, authToken) : null;
 
 export async function sendSMS(to: string, body: string): Promise<boolean> {
+    const safeBody = String(body).replace(/\bundefined\b/g, 'N/A');
+
     // Debug: Log env vars on first call
     if (!client) {
         console.log('⚠️  Twilio client not initialized.');
@@ -17,13 +19,13 @@ export async function sendSMS(to: string, body: string): Promise<boolean> {
         console.log('  TWILIO_PHONE_NUMBER:', fromNumber ? fromNumber : 'MISSING');
         console.log('📝 SMS (dev/mock):');
         console.log(`   To: ${to}`);
-        console.log(`   Body: ${body}`);
+        console.log(`   Body: ${safeBody}`);
         return true; // Return success for dev mode
     }
 
     try {
         const messageOptions: any = {
-            body,
+            body: safeBody,
             to,
         };
 
@@ -38,7 +40,7 @@ export async function sendSMS(to: string, body: string): Promise<boolean> {
             return false;
         }
 
-        console.log(`📝 Message options:`, { to, body: body.slice(0, 50) + '...', ...messageOptions });
+        console.log(`📝 Message options:`, { to, body: safeBody.slice(0, 50) + '...', ...messageOptions });
         const message = await client.messages.create(messageOptions);
         console.log(`✅ SMS sent successfully!`);
         console.log(`   SID: ${message.sid}`);
