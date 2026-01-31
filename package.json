@@ -14,7 +14,7 @@
     "clx": "^1.0.0",
     "lucide-react": "^0.563.0",
     "mongoose": "^9.1.5",
-    "next": "16.1.4",
+    "next": "^16.1.6",
     "nodemailer": "^7.0.13",
     "react": "19.2.3",
     "react-dom": "19.2.3",

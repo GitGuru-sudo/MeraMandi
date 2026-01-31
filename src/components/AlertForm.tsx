@@ -130,11 +130,11 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
     const districts = INDIAN_LOCATIONS[selectedState] || [];
 
     return (
-        <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden mb-8">
+        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden mb-8">
             {/* Header */}
             <div className="bg-green-600 p-6 text-center">
                 <div className="flex justify-center mb-4">
-                    <div className="bg-white p-3 rounded-full">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-full">
                         <Sprout className="h-8 w-8 text-green-600" />
                     </div>
                 </div>
@@ -159,7 +159,7 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                     )}
 
                     <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Phone Number</label>
                         <div className="mt-1 relative rounded-md shadow-sm">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <span className="text-gray-500 sm:text-sm">+91</span>
@@ -169,44 +169,44 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                                 name="phone"
                                 id="phone"
                                 required
-                                className="text-gray-900 placeholder:text-gray-400 focus:ring-green-500 focus:border-green-500 block w-full pl-12 sm:text-sm border-gray-300 rounded-md py-3 border"
+                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 focus:ring-green-500 focus:border-green-500 block w-full pl-12 sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border"
                                 placeholder="9876543210"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Your Name</label>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Your Name</label>
                         <input
                             type="text"
                             name="name"
                             id="name"
                             required
-                            className="text-gray-900 placeholder:text-gray-400 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-3 border px-3"
+                            className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border px-3"
                             placeholder="Ram Kumar"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Optional - for confirmation)</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Email (Optional - for confirmation)</label>
                         <input
                             type="email"
                             name="email"
                             id="email"
-                            className="text-gray-900 placeholder:text-gray-400 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-3 border px-3"
+                            className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 focus:ring-green-500 focus:border-green-500 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 rounded-md py-3 border px-3"
                             placeholder="farmer@example.com"
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="state" className="block text-sm font-medium text-gray-700">State</label>
+                            <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-slate-300">State</label>
                             <select
                                 name="state"
                                 id="state"
                                 value={selectedState}
                                 onChange={handleStateChange}
-                                className="text-gray-900 mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                                className="text-gray-900 dark:text-white mt-1 block w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                             >
                                 <option value="">Select State</option>
                                 {Object.keys(INDIAN_LOCATIONS).map((st) => (
@@ -215,14 +215,14 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="district" className="block text-sm font-medium text-gray-700">District</label>
+                            <label htmlFor="district" className="block text-sm font-medium text-gray-700 dark:text-slate-300">District</label>
                             <select
                                 name="district"
                                 id="district"
                                 value={selectedDistrict}
                                 onChange={handleDistrictChange}
                                 disabled={!selectedState}
-                                className="text-gray-900 mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm disabled:bg-gray-100"
+                                className="text-gray-900 dark:text-white mt-1 block w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-md shadow-sm py-3 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-slate-700"
                             >
                                 <option value="">Select District</option>
                                 {districts.map((d) => (
@@ -234,7 +234,7 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="mandi" className="block text-sm font-medium text-gray-700">Mandi (Market)</label>
+                            <label htmlFor="mandi" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Mandi (Market)</label>
                             <input
                                 type="text"
                                 name="mandi"
@@ -242,30 +242,30 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                                 value={mandiInput}
                                 onChange={handleMandiChange}
                                 placeholder="e.g. Adampur"
-                                className="text-gray-900 placeholder:text-gray-400 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 block w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                             />
                         </div>
                         <div>
-                            <label htmlFor="commodity" className="block text-sm font-medium text-gray-700">Crop</label>
+                            <label htmlFor="commodity" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Crop</label>
                             <input
                                 type="text"
                                 name="commodity"
                                 id="commodity"
                                 defaultValue="Cotton"
-                                className="text-gray-900 placeholder:text-gray-400 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                                className="text-gray-900 dark:text-white placeholder:text-gray-400 dark:bg-slate-800 mt-1 block w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                             />
                         </div>
                     </div>
 
                     {/* Advanced Schedule Builder */}
-                    <div className="border-t border-gray-200 pt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Notification Schedule</label>
+                    <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Notification Schedule</label>
 
                         {/* List of Schedules */}
                         <div className="space-y-2 mb-3">
                             {schedules.map((sch, index) => (
-                                <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded-md border border-gray-200">
-                                    <span className="text-gray-800 text-sm font-medium">
+                                <div key={index} className="flex justify-between items-center bg-gray-50 dark:bg-slate-800 p-2 rounded-md border border-gray-200 dark:border-slate-700">
+                                    <span className="text-gray-800 dark:text-gray-200 text-sm font-medium">
                                         {sch.day} at {sch.time}
                                     </span>
                                     <button
@@ -285,12 +285,12 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                         {/* Add New Schedule */}
                         <div className="flex gap-2 items-end">
                             <div className="w-1/2">
-                                <label htmlFor="tempDay" className="block text-xs text-gray-500 mb-1">Day</label>
+                                <label htmlFor="tempDay" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Day</label>
                                 <select
                                     id="tempDay"
                                     value={tempDay}
                                     onChange={(e) => setTempDay(e.target.value)}
-                                    className="block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 border py-2 px-2"
+                                    className="block w-full text-sm border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white dark:bg-slate-800 border py-2 px-2"
                                 >
                                     <option value="Everyday">Everyday</option>
                                     <option value="Monday">Monday</option>
@@ -303,13 +303,13 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                                 </select>
                             </div>
                             <div className="w-1/3">
-                                <label htmlFor="tempTime" className="block text-xs text-gray-500 mb-1">Time</label>
+                                <label htmlFor="tempTime" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Time</label>
                                 <input
                                     type="time"
                                     id="tempTime"
                                     value={tempTime}
                                     onChange={(e) => setTempTime(e.target.value)}
-                                    className="block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 border py-2 px-2"
+                                    className="block w-full text-sm border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white dark:bg-slate-800 border py-2 px-2"
                                 />
                             </div>
                             <button
@@ -332,9 +332,9 @@ export default function AlertForm({ onSuccess }: AlertFormProps) {
                 </form>
             </div>
 
-            <div className="bg-gray-50 px-4 py-4 sm:px-6">
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                    <Bell className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+            <div className="bg-gray-50 dark:bg-slate-800 px-4 py-4 sm:px-6">
+                <div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                    <Bell className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                     <span>Alerts sent via SMS daily at 11:30 AM</span>
                 </div>
             </div>
