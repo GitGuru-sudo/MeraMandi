@@ -89,7 +89,6 @@ function PricesContent() {
         if (urlState) setSelectedState(urlState);
         if (urlDistrict) setSelectedDistrict(urlDistrict);
 
-<<<<<<< HEAD
         checkAuth();
         
         // Fetch prices on mount with current state/district
@@ -119,9 +118,6 @@ function PricesContent() {
         };
         
         fetchInitial();
-=======
-        checkAuth(urlState, urlDistrict);
->>>>>>> 23b555f711557923281f035194bfec3952e910a1
 
         // Close profile menu on click outside
         const handleClickOutside = (event: MouseEvent) => {
