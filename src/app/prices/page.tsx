@@ -90,6 +90,34 @@ function PricesContent() {
         if (urlDistrict) setSelectedDistrict(urlDistrict);
 
         checkAuth();
+        
+        // Fetch prices on mount with current state/district
+        const fetchInitial = async () => {
+            const params = new URLSearchParams();
+            if (urlState) params.set('state', urlState);
+            if (urlDistrict) params.set('district', urlDistrict);
+
+            const url = `/api/prices?${params.toString()}`;
+            console.log('[Frontend] Initial fetch from:', url);
+            
+            try {
+                const res = await fetch(url, { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('[Frontend] Initial received data:', data);
+                    setRecords(Array.isArray(data.records) ? data.records : []);
+                } else {
+                    console.error('[Frontend] Initial API error:', res.status);
+                    setRecords([]);
+                }
+            } catch (error) {
+                console.error('[Frontend] Initial fetch failed:', error);
+                setRecords([]);
+            }
+            setLoading(false);
+        };
+        
+        fetchInitial();
 
         // Close profile menu on click outside
         const handleClickOutside = (event: MouseEvent) => {
@@ -125,13 +153,24 @@ function PricesContent() {
             if (selectedState) params.set('state', selectedState);
             if (selectedDistrict) params.set('district', selectedDistrict);
 
-            const res = await fetch(`/api/prices?${params.toString()}`);
+            const url = `/api/prices?${params.toString()}`;
+            console.log('[Frontend] Fetching prices from:', url);
+            const res = await fetch(url, { credentials: 'include' });
+            
             if (res.ok) {
                 const data = await res.json();
-                setRecords(data.records || []);
+                console.log('[Frontend] Received data:', data);
+                console.log('[Frontend] Received', data.records?.length || 0, 'records');
+                setRecords(Array.isArray(data.records) ? data.records : []);
+            } else {
+                console.error('[Frontend] API returned status:', res.status);
+                const errorData = await res.json().catch(() => ({}));
+                console.error('[Frontend] Error response:', errorData);
+                setRecords([]);
             }
         } catch (error) {
-            console.error('Failed to fetch prices:', error);
+            console.error('[Frontend] Failed to fetch prices:', error);
+            setRecords([]);
         }
         setLoading(false);
     };

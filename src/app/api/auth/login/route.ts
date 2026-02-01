@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import User from '@/models/User';
+import User, { IUser } from '@/models/User';
 import dbConnect from '@/lib/mongodb';
 import crypto from 'crypto';
 import { fetchMandiPrices } from '@/services/govApi';
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         }
 
         // Find user by email
-        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+        const user = (await User.findOne({ email: email.toLowerCase() }).select('+password')) as IUser | null;
 
         if (!user) {
             return NextResponse.json(

@@ -50,16 +50,19 @@ const MOCK_DATA: MandiRecord[] = [
 
 export async function fetchMandiPrices(apiKey?: string, state?: string, district?: string): Promise<MandiRecord[]> {
     // If no API key is provided, return mock data for development
+    console.log('fetchMandiPrices called with:', { apiKey: !!apiKey, state, district, useMockData: process.env.USE_MOCK_DATA });
+    
     if (!apiKey || process.env.USE_MOCK_DATA === 'true') {
         console.log('Using MOCK DATA for Mandi Prices...');
         let data = MOCK_DATA;
         if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
         if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
+        console.log('Returning mock data with', data.length, 'records');
         return data;
     }
 
     try {
-        let url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`; // Increased limit
+        let url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`;
 
         if (state) {
             url += `&filters[state]=${encodeURIComponent(state)}`;
@@ -68,16 +71,23 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
             url += `&filters[district]=${encodeURIComponent(district)}`;
         }
 
+        console.log('Fetching from gov API:', url.replace(apiKey, '***'));
         const response = await fetch(url);
 
         if (!response.ok) {
+            console.error(`Gov API returned status ${response.statusText}. The state/district filter may not exist in the dataset.`);
             throw new Error(`Failed to fetch data: ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log('Gov API response received with', data.records?.length || 0, 'records');
         return data.records || [];
     } catch (error) {
         console.error('Error fetching mandi prices:', error);
-        return [];
+        console.log('Falling back to MOCK DATA due to error');
+        let data = MOCK_DATA;
+        if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
+        if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
+        return data;
     }
 }
