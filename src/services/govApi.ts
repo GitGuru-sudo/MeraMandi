@@ -61,53 +61,84 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
         return data;
     }
 
-    try {
-        let url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`;
+    // Retry logic for API calls
+    const maxRetries = 2;
+    let lastError: any = null;
 
-        if (state) {
-            url += `&filters[state]=${encodeURIComponent(state)}`;
-        }
-        if (district) {
-            url += `&filters[district]=${encodeURIComponent(district)}`;
-        }
-
-        console.log('Fetching from gov API:', url.replace(apiKey, '***'));
-        
-        // Add timeout and better error handling for Vercel
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/json',
+            let url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`;
+
+            if (state) {
+                url += `&filters[state]=${encodeURIComponent(state)}`;
+            }
+            if (district) {
+                url += `&filters[district]=${encodeURIComponent(district)}`;
+            }
+
+            console.log(`Fetching from gov API (attempt ${attempt}/${maxRetries}):`, url.replace(apiKey, '***'));
+            
+            // Add timeout and better error handling for Vercel
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            
+            try {
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'application/json',
+                        'Accept-Encoding': 'gzip, deflate',
+                    },
+                    // Disable keepalive which can cause connection resets
+                    keepalive: false,
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    console.error(`Gov API returned status ${response.statusText}`);
+                    throw new Error(`Failed to fetch data: ${response.statusText}`);
                 }
-            });
-            clearTimeout(timeoutId);
 
-            if (!response.ok) {
-                console.error(`Gov API returned status ${response.statusText}. The state/district filter may not exist in the dataset.`);
-                throw new Error(`Failed to fetch data: ${response.statusText}`);
+                const data = await response.json();
+                console.log('✅ Gov API response received with', data.records?.length || 0, 'records');
+                return data.records || [];
+            } catch (fetchError: any) {
+                clearTimeout(timeoutId);
+                lastError = fetchError;
+                
+                if (fetchError.name === 'AbortError') {
+                    console.error(`Attempt ${attempt}: Request timeout after 15s`);
+                } else {
+                    console.error(`Attempt ${attempt}: ${fetchError.message}`);
+                }
+                
+                // Don't retry on last attempt
+                if (attempt < maxRetries) {
+                    const waitTime = attempt * 1000; // 1s, 2s backoff
+                    console.log(`Retrying in ${waitTime}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
             }
-
-            const data = await response.json();
-            console.log('Gov API response received with', data.records?.length || 0, 'records');
-            return data.records || [];
-        } catch (fetchError: any) {
-            clearTimeout(timeoutId);
-            if (fetchError.name === 'AbortError') {
-                console.error('Gov API request timeout after 10s');
+        } catch (error) {
+            lastError = error;
+            console.error(`Attempt ${attempt} failed:`, error);
+            
+            if (attempt < maxRetries) {
+                const waitTime = attempt * 1000;
+                await new Promise(resolve => setTimeout(resolve, waitTime));
             }
-            throw fetchError;
         }
-    } catch (error) {
-        console.error('Error fetching mandi prices:', error);
-        console.log('Falling back to MOCK DATA due to error');
-        let data = MOCK_DATA;
-        if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
-        if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
-        return data;
     }
+
+    // All retries failed, fall back to mock data
+    console.error('❌ All API attempts failed, falling back to MOCK DATA');
+    if (lastError) {
+        console.error('Last error:', lastError.message || lastError);
+    }
+    
+    let data = MOCK_DATA;
+    if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
+    if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
+    return data;
 }
