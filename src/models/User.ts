@@ -12,16 +12,6 @@ export interface IUser extends Document {
         district: string;
         mandi: string;
     };
-    registrationMarketData?: {
-        state?: string;
-        district?: string;
-        minPrice: number;
-        maxPrice: number;
-        modalPrice: number;
-        mandiName: string;
-        commodity: string;
-        fetchedAt: Date;
-    };
     otp?: string; // OTP for phone verification
     otpExpiry?: Date;
     authToken?: string; // Simple auth token
@@ -65,16 +55,6 @@ const UserSchema: Schema<IUser> = new Schema({
         state: String,
         district: String,
         mandi: String,
-    },
-    registrationMarketData: {
-        state: String,
-        district: String,
-        minPrice: Number,
-        maxPrice: Number,
-        modalPrice: Number,
-        mandiName: String,
-        commodity: String,
-        fetchedAt: Date
     },
     otp: {
         type: String,

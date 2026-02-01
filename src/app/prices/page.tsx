@@ -89,7 +89,7 @@ function PricesContent() {
         if (urlState) setSelectedState(urlState);
         if (urlDistrict) setSelectedDistrict(urlDistrict);
 
-        checkAuth();
+        checkAuth(urlState, urlDistrict);
 
         // Close profile menu on click outside
         const handleClickOutside = (event: MouseEvent) => {
@@ -106,12 +106,20 @@ function PricesContent() {
         fetchPrices();
     }, [selectedState, selectedDistrict]);
 
-    const checkAuth = async () => {
+    const checkAuth = async (urlState?: string | null, urlDistrict?: string | null) => {
         try {
             const res = await fetch('/api/auth/me', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setUser(data.user);
+                
+                // Auto-fill state and district from user's registration data if not provided in URL
+                if (!urlState && data.user.location?.state) {
+                    setSelectedState(data.user.location.state);
+                }
+                if (!urlDistrict && data.user.location?.district) {
+                    setSelectedDistrict(data.user.location.district);
+                }
             }
         } catch (error) {
             console.error('Auth check failed:', error);
