@@ -91,7 +91,7 @@ function PricesContent() {
 
         checkAuth();
         
-        // Fetch prices on mount with current state/district
+        // Fetch prices on mount with URL params
         const fetchInitial = async () => {
             const params = new URLSearchParams();
             if (urlState) params.set('state', urlState);
@@ -130,7 +130,14 @@ function PricesContent() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [searchParams]);
 
+    // Only fetch when user manually changes state/district (not on initial mount)
     useEffect(() => {
+        // Skip initial mount (when both are empty and we haven't fetched yet)
+        if (!selectedState && !selectedDistrict && records.length === 0) {
+            return;
+        }
+        
+        console.log('[Frontend] State/District changed, fetching new data:', { selectedState, selectedDistrict });
         fetchPrices();
     }, [selectedState, selectedDistrict]);
 
@@ -154,12 +161,17 @@ function PricesContent() {
         }
     };
 
-    const fetchPrices = async () => {
+    const fetchPrices = async (state?: string, district?: string) => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
-            if (selectedState) params.set('state', selectedState);
-            if (selectedDistrict) params.set('district', selectedDistrict);
+            
+            // Use provided state/district or fall back to selected ones
+            const stateToUse = state || selectedState;
+            const districtToUse = district || selectedDistrict;
+            
+            if (stateToUse) params.set('state', stateToUse);
+            if (districtToUse) params.set('district', districtToUse);
 
             const url = `/api/prices?${params.toString()}`;
             console.log('[Frontend] Fetching prices from:', url);
