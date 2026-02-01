@@ -72,16 +72,36 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
         }
 
         console.log('Fetching from gov API:', url.replace(apiKey, '***'));
-        const response = await fetch(url);
+        
+        // Add timeout and better error handling for Vercel
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/json',
+                }
+            });
+            clearTimeout(timeoutId);
 
-        if (!response.ok) {
-            console.error(`Gov API returned status ${response.statusText}. The state/district filter may not exist in the dataset.`);
-            throw new Error(`Failed to fetch data: ${response.statusText}`);
+            if (!response.ok) {
+                console.error(`Gov API returned status ${response.statusText}. The state/district filter may not exist in the dataset.`);
+                throw new Error(`Failed to fetch data: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Gov API response received with', data.records?.length || 0, 'records');
+            return data.records || [];
+        } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+                console.error('Gov API request timeout after 10s');
+            }
+            throw fetchError;
         }
-
-        const data = await response.json();
-        console.log('Gov API response received with', data.records?.length || 0, 'records');
-        return data.records || [];
     } catch (error) {
         console.error('Error fetching mandi prices:', error);
         console.log('Falling back to MOCK DATA due to error');

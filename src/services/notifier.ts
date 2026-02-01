@@ -1,11 +1,29 @@
 import twilio from 'twilio';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+const fromNumber = process.env.TWILIO_PHONE_NUMBER?.trim();
+const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID?.trim();
 
-const client = (accountSid && authToken) ? twilio(accountSid, authToken) : null;
+// Log to debug environment loading
+if (process.env.NODE_ENV === 'production') {
+    console.log('[SMS Init] Production environment detected');
+    console.log('[SMS Init] SID loaded:', !!accountSid, accountSid ? `(${accountSid.slice(0, 6)}...)` : '');
+    console.log('[SMS Init] Token loaded:', !!authToken);
+    console.log('[SMS Init] From number loaded:', !!fromNumber);
+}
+
+let client: any = null;
+try {
+    if (accountSid && authToken) {
+        client = twilio(accountSid, authToken);
+        console.log('[SMS Init] ✅ Twilio client initialized successfully');
+    } else {
+        console.warn('[SMS Init] ⚠️  Missing Twilio credentials');
+    }
+} catch (initError) {
+    console.error('[SMS Init] ❌ Failed to initialize Twilio client:', initError);
+}
 
 export async function sendSMS(to: string, body: string): Promise<boolean> {
     const safeBody = String(body).replace(/\bundefined\b/g, 'N/A');
