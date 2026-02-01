@@ -67,16 +67,10 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            let url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`;
+            // NOTE: Gov API doesn't support server-side filtering reliably, so we fetch all data and filter client-side
+            const url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=2000`;
 
-            if (state) {
-                url += `&filters[state]=${encodeURIComponent(state)}`;
-            }
-            if (district) {
-                url += `&filters[district]=${encodeURIComponent(district)}`;
-            }
-
-            console.log(`Fetching from gov API (attempt ${attempt}/${maxRetries}):`, url.replace(apiKey, '***'));
+            console.log(`Fetching from gov API (attempt ${attempt}/${maxRetries}): [Fetching all records, will filter client-side for state=${state}, district=${district}]`);
             
             // Add timeout and better error handling for Vercel
             const controller = new AbortController();
@@ -100,9 +94,20 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
                     throw new Error(`Failed to fetch data: ${response.statusText}`);
                 }
 
-                const data = await response.json();
-                console.log('✅ Gov API response received with', data.records?.length || 0, 'records');
-                return data.records || [];
+                let data = await response.json();
+                let records = data.records || [];
+                console.log(`✅ Gov API response received with ${records.length} total records`);
+                
+                // Apply client-side filtering (Gov API filtering doesn't work reliably)
+                if (state) {
+                    records = records.filter((r: MandiRecord) => r.state?.toLowerCase() === state.toLowerCase());
+                }
+                if (district) {
+                    records = records.filter((r: MandiRecord) => r.district?.toLowerCase() === district.toLowerCase());
+                }
+                
+                console.log(`After filtering by state=${state}, district=${district}: ${records.length} records`);
+                return records;
             } catch (fetchError: any) {
                 clearTimeout(timeoutId);
                 lastError = fetchError;
