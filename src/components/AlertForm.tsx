@@ -93,6 +93,34 @@ export default function AlertForm({ onSuccess, user, state: propState, district:
                         </div>
                     )}
 
+                    {/* Pre-filled Location Display */}
+                    {(propState || propDistrict) && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">📍 Alert Location</p>
+                            <div className="flex items-center gap-4">
+                                <div>
+                                    <p className="text-xs text-blue-500 dark:text-blue-300">State</p>
+                                    <p className="text-sm font-bold text-blue-900 dark:text-blue-100">{propState || 'Not set'}</p>
+                                </div>
+                                <div className="text-blue-300 dark:text-blue-600">→</div>
+                                <div>
+                                    <p className="text-xs text-blue-500 dark:text-blue-300">District</p>
+                                    <p className="text-sm font-bold text-blue-900 dark:text-blue-100">{propDistrict || 'Not set'}</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 opacity-80">✓ Using your registered location from profile</p>
+                        </div>
+                    )}
+
+                    {/* Pre-filled Crop Display */}
+                    {user?.preferredCrop && (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+                            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">🌾 Crop</p>
+                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100">{user.preferredCrop}</p>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 opacity-80">✓ From your registration profile</p>
+                        </div>
+                    )}
+
                     {/* Hidden Context Fields (Simplifying the UX) */}
                     <input type="hidden" name="name" value={user?.name || 'Guest'} />
                     <input type="hidden" name="phone" value={user?.phone || ''} />

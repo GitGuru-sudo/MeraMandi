@@ -13,6 +13,10 @@ export interface IAlert extends Document {
         time: string; // 'HH:mm'
     }[];
     email?: string;
+    cachedMin?: number;
+    cachedMax?: number;
+    cachedModal?: number;
+    cachedMandi?: string;
     lastNotifiedAt?: Date;
     createdAt: Date;
 }
@@ -60,6 +64,10 @@ const AlertSchema: Schema<IAlert> = new Schema({
         trim: true,
         lowercase: true,
     },
+    cachedMin: Number,
+    cachedMax: Number,
+    cachedModal: Number,
+    cachedMandi: String,
     lastNotifiedAt: {
         type: Date,
     },
