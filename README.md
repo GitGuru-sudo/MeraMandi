@@ -1,9 +1,9 @@
-# 🌾 Meri Mandi - Voice Agent for Commodity Prices
+# 🌾 Meri Mandi - Voice Agent for Commodity Prices 
 
 A Next.js powered voice agent platform that helps farmers get real-time commodity prices through automated phone calls. Farmers simply call a Twilio number, speak their location, and receive price information via SMS.
 
 **Status**: ✅ Production Ready
-
+https://mera-mandi.vercel.app/
 ---
 
 ## 🎯 Features
@@ -187,14 +187,11 @@ Meet the team behind Meri Mandi:
 
 | Name | LinkedIn | Role |
 |------|----------|------|
-| Saksham Arora | [LinkedIn](https://www.linkedin.com/in/saksham-arora-bb4831329/) | [ADD ROLE] |
-| Anubhav Dash | [LinkedIn](https://www.linkedin.com/in/anubhav-dash-b1a132217/) | [ADD ROLE] |
-| Yashasvi Rastogi | [LinkedIn](https://www.linkedin.com/in/yashasvi-rastogi-32b8b4362/) | [ADD ROLE] |
-| Tejaswani Nayak | [LinkedIn](https://www.linkedin.com/in/tejaswani-nayak-1a0a6a286/) | [ADD ROLE] |
+| Saksham Arora | [LinkedIn](https://www.linkedin.com/in/saksham-arora-bb4831329/) | 
+| Anubhav Dash | [LinkedIn](https://www.linkedin.com/in/anubhav-dash-b1a132217/) | 
+| Yashasvi Rastogi | [LinkedIn](https://www.linkedin.com/in/yashasvi-rastogi-32b8b4362/) |
+| Tejaswani Nayak | [LinkedIn](https://www.linkedin.com/in/tejaswani-nayak-1a0a6a286/) | 
 
-### [ADD NEW TEAM MEMBERS HERE]
-
----
 
 ## 👥 Contributing
 
