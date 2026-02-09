@@ -162,116 +162,69 @@ public/                   # Static assets
 ## 📸 Screenshots & Diagrams
 
 ### Dashboard
+[ADD SCREENSHOT HERE - User dashboard with price alerts]
 
-![alt text](image.png)
-![Dashboard Screenshot]
-![alt text](image-1.png)
 ### Price Lookup Page
 [ADD SCREENSHOT HERE - Real-time price listings]
-![alt text](image-2.png)
-![Price Lookup Screenshot]
 
+### Voice Flow Diagram
+[ADD DIAGRAM HERE - Call flow and voice interaction sequence]
 
-## 👥 Team Contributions
+### Database Schema
+[ADD DIAGRAM HERE - MongoDB collections and relationships]
+
+---
+
+## 🌐 Live Application
+
+**Production Website**: [ADD PRODUCTION LINK HERE]
+
+---
+
+## 👥 Team
+
+Meet the team behind Meri Mandi:
+
+| Name | LinkedIn | Role |
+|------|----------|------|
+| Saksham Arora | [LinkedIn](https://www.linkedin.com/in/saksham-arora-bb4831329/) | [ADD ROLE] |
+| Anubhav Dash | [LinkedIn](https://www.linkedin.com/in/anubhav-dash-b1a132217/) | [ADD ROLE] |
+| Yashasvi Rastogi | [LinkedIn](https://www.linkedin.com/in/yashasvi-rastogi-32b8b4362/) | [ADD ROLE] |
+| Tejaswani Nayak | [LinkedIn](https://www.linkedin.com/in/tejaswani-nayak-1a0a6a286/) | [ADD ROLE] |
+
+### [ADD NEW TEAM MEMBERS HERE]
+
+---
+
+## 👥 Contributing
 
 We welcome contributions from the community! Here's how you can help:
 
 ### Areas for Contribution
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Team</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-            margin: 0;
-            padding: 0;
-            color: white;
-            text-align: center;
-        }
 
-        .container {
-            padding: 50px 20px;
-        }
+**Frontend Improvements**
+- [ADD AREA FOR TEAM - UI/UX enhancements]
+- [ADD AREA FOR TEAM - Mobile responsiveness]
+- [ADD AREA FOR TEAM - Accessibility improvements]
 
-        h1 {
-            font-size: 40px;
-            margin-bottom: 40px;
-        }
+**Backend Features**
+- [ADD AREA FOR TEAM - Voice processing optimization]
+- [ADD AREA FOR TEAM - API performance improvements]
+- [ADD AREA FOR TEAM - Database query optimization]
 
-        .team-card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            margin: 20px auto;
-            width: 300px;
-            border-radius: 12px;
-            transition: 0.3s;
-        }
+**Documentation**
+- [ADD AREA FOR TEAM - API documentation]
+- [ADD AREA FOR TEAM - Deployment guides]
+- [ADD AREA FOR TEAM - Troubleshooting guides]
 
-        .team-card:hover {
-            transform: scale(1.05);
-            background: rgba(255, 255, 255, 0.2);
-        }
+**Testing**
+- [ADD AREA FOR TEAM - Unit tests]
+- [ADD AREA FOR TEAM - Integration tests]
+- [ADD AREA FOR TEAM - E2E tests]
 
-        .team-name {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-
-        .linkedin-btn {
-            text-decoration: none;
-            background: #0077b5;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            display: inline-block;
-            transition: 0.3s;
-        }
-
-        .linkedin-btn:hover {
-            background: #005582;
-        }
-
-        @media (max-width: 500px) {
-            .team-card {
-                width: 90%;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>Team</h1>
-
-        <div class="team-card">
-            <div class="team-name">Saksham Arora</div>
-            <a href="https://www.linkedin.com/in/saksham-arora-bb4831329/" target="_blank" class="linkedin-btn">LinkedIn</a>
-        </div>
-
-        <div class="team-card">
-            <div class="team-name">Anubhav Dash</div>
-            <a href="https://www.linkedin.com/in/anubhav-dash-b1a132217/" target="_blank" class="linkedin-btn">LinkedIn</a>
-        </div>
-
-        <div class="team-card">
-            <div class="team-name">Yashasvi Rastogi</div>
-            <a href="https://www.linkedin.com/in/yashasvi-rastogi-32b8b4362/" target="_blank" class="linkedin-btn">LinkedIn</a>
-        </div>
-
-        <div class="team-card">
-            <div class="team-name">Tejaswani Nayak</div>
-            <a href="https://www.linkedin.com/in/tejaswani-nayak-1a0a6a286/" target="_blank" class="linkedin-btn">LinkedIn</a>
-        </div>
-
-    </div>
-
-</body>
-</html>
-
+**Localization**
+- [ADD AREA FOR TEAM - Add new language support]
+- [ADD AREA FOR TEAM - Improve existing translations]
 
 ### How to Contribute
 
