@@ -64,6 +64,7 @@ function PricesContent() {
     const [user, setUser] = useState<any>(null);
     const [records, setRecords] = useState<PriceRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [darkMode, setDarkMode] = useState(false);
     const [lang, setLang] = useState('en');
@@ -89,8 +90,6 @@ function PricesContent() {
         if (urlState) setSelectedState(urlState);
         if (urlDistrict) setSelectedDistrict(urlDistrict);
 
-        checkAuth();
-        
         // Fetch prices on mount with URL params
         const fetchInitial = async () => {
             const params = new URLSearchParams();
@@ -102,22 +101,33 @@ function PricesContent() {
             
             try {
                 const res = await fetch(url, { credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('[Frontend] Initial received data:', data);
-                    setRecords(Array.isArray(data.records) ? data.records : []);
-                } else {
-                    console.error('[Frontend] Initial API error:', res.status);
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    console.error('[Frontend] Initial API error:', res.status, data.error);
+                    setError(data.error || 'Failed to fetch prices');
                     setRecords([]);
+                } else {
+                    console.log('[Frontend] Initial received data:', data);
+                    if (data.records && data.records.length > 0) {
+                        setError(null);
+                        setRecords(Array.isArray(data.records) ? data.records : []);
+                    } else {
+                        console.warn('[Frontend] No records returned for initial load');
+                        setError(null);
+                        setRecords([]);
+                    }
                 }
             } catch (error) {
                 console.error('[Frontend] Initial fetch failed:', error);
+                setError('Network error: Unable to reach data server');
                 setRecords([]);
             }
             setLoading(false);
         };
         
         fetchInitial();
+        checkAuth();
 
         // Close profile menu on click outside
         const handleClickOutside = (event: MouseEvent) => {
@@ -132,7 +142,7 @@ function PricesContent() {
 
     // Only fetch when user manually changes state/district (not on initial mount)
     useEffect(() => {
-        // Skip initial mount (when both are empty and we haven't fetched yet)
+        // Skip the very first mount (records is empty and both are empty)
         if (!selectedState && !selectedDistrict && records.length === 0) {
             return;
         }
@@ -150,11 +160,15 @@ function PricesContent() {
                 
                 // Auto-fill state and district from user's registration data if not provided in URL
                 if (!urlState && data.user.location?.state) {
+                    console.log('[Auth] Auto-filling state from user profile:', data.user.location.state);
                     setSelectedState(data.user.location.state);
                 }
                 if (!urlDistrict && data.user.location?.district) {
+                    console.log('[Auth] Auto-filling district from user profile:', data.user.location.district);
                     setSelectedDistrict(data.user.location.district);
                 }
+            } else {
+                console.log('[Auth] User not authenticated');
             }
         } catch (error) {
             console.error('Auth check failed:', error);
@@ -163,6 +177,7 @@ function PricesContent() {
 
     const fetchPrices = async (state?: string, district?: string) => {
         setLoading(true);
+        setError(null);
         try {
             const params = new URLSearchParams();
             
@@ -174,22 +189,31 @@ function PricesContent() {
             if (districtToUse) params.set('district', districtToUse);
 
             const url = `/api/prices?${params.toString()}`;
-            console.log('[Frontend] Fetching prices from:', url);
+            console.log('[Frontend] Fetching prices from:', url, { stateToUse, districtToUse });
             const res = await fetch(url, { credentials: 'include' });
             
-            if (res.ok) {
-                const data = await res.json();
+            const data = await res.json();
+            
+            if (!res.ok) {
+                console.error('[Frontend] API returned status:', res.status, data.error);
+                setError(data.error || 'Failed to fetch prices');
+                setRecords([]);
+            } else {
                 console.log('[Frontend] Received data:', data);
                 console.log('[Frontend] Received', data.records?.length || 0, 'records');
-                setRecords(Array.isArray(data.records) ? data.records : []);
-            } else {
-                console.error('[Frontend] API returned status:', res.status);
-                const errorData = await res.json().catch(() => ({}));
-                console.error('[Frontend] Error response:', errorData);
-                setRecords([]);
+                
+                const recordsToSet = Array.isArray(data.records) ? data.records : [];
+                if (recordsToSet.length === 0) {
+                    console.warn('[Frontend] No records found for the selected location');
+                    setError(null);
+                } else {
+                    setError(null);
+                }
+                setRecords(recordsToSet);
             }
         } catch (error) {
             console.error('[Frontend] Failed to fetch prices:', error);
+            setError('Network error: Unable to reach data server');
             setRecords([]);
         }
         setLoading(false);
@@ -435,13 +459,36 @@ function PricesContent() {
                             </div>
                         ))}
                     </div>
+                ) : error ? (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-2xl p-6">
+                        <div className="flex gap-4">
+                            <div className="text-3xl">⚠️</div>
+                            <div>
+                                <h3 className="font-bold text-red-900 dark:text-red-400 mb-2">Unable to Load Prices</h3>
+                                <p className="text-red-700 dark:text-red-300 text-sm mb-4">{error}</p>
+                                <div className="text-xs text-red-600 dark:text-red-400 space-y-1">
+                                    <p>🔍 Please check:</p>
+                                    <ul className="list-disc list-inside space-y-1 ml-2">
+                                        <li>Internet connection is active</li>
+                                        <li>API key is properly configured</li>
+                                        <li>Try selecting a different state/district</li>
+                                        <li>Refresh the page to retry</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ) : filteredRecords.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-3xl">🔍</span>
                         </div>
                         <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">{t('noData')}</h3>
-                        <p className="text-slate-500 text-sm">{t('tryDemo')}</p>
+                        <p className="text-slate-500 text-sm max-w-md">
+                            {!selectedState && !selectedDistrict 
+                                ? 'Select a state and district to view prices, or they will be auto-filled from your profile.' 
+                                : 'No price data available for the selected location. Try a different state or district.'}
+                        </p>
                     </div>
                 ) : (
                     <>

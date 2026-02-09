@@ -453,7 +453,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 }
 
                 .brand-tagline {
-                    color: #6b7280;
+                    color: rgba(255, 255, 255, 0.8);
                     margin-top: 0.75rem;
                     font-size: 1.125rem;
                     font-weight: 500;
@@ -537,11 +537,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 .input-box input,
                 .input-box select {
                     width: 100%;
-                    background: rgba(255, 255, 255, 0.1);
-                    border: none;
+                    background: rgba(255, 255, 255, 0.15);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
                     border-radius: 1rem;
-                    padding: 0.875rem 1rem 0.875rem 4rem; /* Increased to 4rem for icons */
-                    color: white;
+                    padding: 0.875rem 1rem 0.875rem 4rem;
+                    color: rgba(255, 255, 255, 0.95);
                     font-size: 1rem;
                     outline: none;
                     transition: all 0.2s;

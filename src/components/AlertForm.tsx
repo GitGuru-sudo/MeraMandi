@@ -165,43 +165,46 @@ export default function AlertForm({ onSuccess, user, state: propState, district:
                         </div>
 
                         {/* Add New Schedule */}
-                        <div className="flex gap-2 items-end bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <div className="flex-1">
-                                <label htmlFor="tempDay" className="sr-only">Day</label>
-                                <select
-                                    id="tempDay"
-                                    value={tempDay}
-                                    onChange={(e) => setTempDay(e.target.value)}
-                                    className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 font-medium"
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-700 mt-3">
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase">Add Another Schedule</p>
+                            <div className="flex gap-2 items-end bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <div className="flex-1">
+                                    <label htmlFor="tempDay" className="sr-only">Day</label>
+                                    <select
+                                        id="tempDay"
+                                        value={tempDay}
+                                        onChange={(e) => setTempDay(e.target.value)}
+                                        className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 font-medium"
+                                    >
+                                        <option value="Everyday" className="dark:bg-slate-800">Everyday</option>
+                                        <option value="Monday" className="dark:bg-slate-800">Monday</option>
+                                        <option value="Tuesday" className="dark:bg-slate-800">Tuesday</option>
+                                        <option value="Wednesday" className="dark:bg-slate-800">Wednesday</option>
+                                        <option value="Thursday" className="dark:bg-slate-800">Thursday</option>
+                                        <option value="Friday" className="dark:bg-slate-800">Friday</option>
+                                        <option value="Saturday" className="dark:bg-slate-800">Saturday</option>
+                                        <option value="Sunday" className="dark:bg-slate-800">Sunday</option>
+                                    </select>
+                                </div>
+                                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                                <div className="w-24">
+                                    <label htmlFor="tempTime" className="sr-only">Time</label>
+                                    <input
+                                        type="time"
+                                        id="tempTime"
+                                        value={tempTime}
+                                        onChange={(e) => setTempTime(e.target.value)}
+                                        className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 text-right font-medium"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={addSchedule}
+                                    className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm ml-2"
                                 >
-                                    <option value="Everyday" className="dark:bg-slate-800">Everyday</option>
-                                    <option value="Monday" className="dark:bg-slate-800">Monday</option>
-                                    <option value="Tuesday" className="dark:bg-slate-800">Tuesday</option>
-                                    <option value="Wednesday" className="dark:bg-slate-800">Wednesday</option>
-                                    <option value="Thursday" className="dark:bg-slate-800">Thursday</option>
-                                    <option value="Friday" className="dark:bg-slate-800">Friday</option>
-                                    <option value="Saturday" className="dark:bg-slate-800">Saturday</option>
-                                    <option value="Sunday" className="dark:bg-slate-800">Sunday</option>
-                                </select>
+                                    <Plus className="h-4 w-4" />
+                                </button>
                             </div>
-                            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                            <div className="w-24">
-                                <label htmlFor="tempTime" className="sr-only">Time</label>
-                                <input
-                                    type="time"
-                                    id="tempTime"
-                                    value={tempTime}
-                                    onChange={(e) => setTempTime(e.target.value)}
-                                    className="block w-full text-sm border-0 bg-transparent text-slate-800 dark:text-white focus:ring-0 px-0 text-right font-medium"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={addSchedule}
-                                className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm ml-2"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </button>
                         </div>
                         <input type="hidden" name="schedules" value={JSON.stringify(schedules)} />
 

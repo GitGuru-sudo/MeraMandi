@@ -10,56 +10,14 @@ export interface MandiRecord {
     arrival_date: string;
 }
 
-const TODAY = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
-
-const MOCK_DATA: MandiRecord[] = [
-    {
-        state: 'Haryana',
-        district: 'Hisar',
-        market: 'Adampur',
-        commodity: 'Cotton',
-        variety: 'American',
-        min_price: '5800',
-        max_price: '6200',
-        modal_price: '6000',
-        arrival_date: TODAY,
-    },
-    {
-        state: 'Haryana',
-        district: 'Hisar',
-        market: 'Hisar',
-        commodity: 'Wheat',
-        variety: 'HD-2967',
-        min_price: '2400',
-        max_price: '2500',
-        modal_price: '2450',
-        arrival_date: TODAY,
-    },
-    {
-        state: 'Punjab',
-        district: 'Bathinda',
-        market: 'Bathinda',
-        commodity: 'Wheat',
-        variety: 'Other',
-        min_price: '2350',
-        max_price: '2450',
-        modal_price: '2400',
-        arrival_date: TODAY,
-    },
-];
-
 export async function fetchMandiPrices(apiKey?: string, state?: string, district?: string): Promise<MandiRecord[]> {
-    // If no API key is provided, return mock data for development
-    console.log('fetchMandiPrices called with:', { apiKey: !!apiKey, state, district, useMockData: process.env.USE_MOCK_DATA });
-    
-    if (!apiKey || process.env.USE_MOCK_DATA === 'true') {
-        console.log('Using MOCK DATA for Mandi Prices...');
-        let data = MOCK_DATA;
-        if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
-        if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
-        console.log('Returning mock data with', data.length, 'records');
-        return data;
+    // API key is required for real data
+    if (!apiKey) {
+        console.error('❌ No API key provided. Cannot fetch government data without GOV_API_KEY');
+        throw new Error('API key is required to fetch market prices. Please configure GOV_API_KEY environment variable.');
     }
+
+    console.log('fetchMandiPrices called with:', { apiKey: !!apiKey, state, district });
 
     // Retry logic for API calls
     const maxRetries = 2;
@@ -90,7 +48,7 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
                 clearTimeout(timeoutId);
 
                 if (!response.ok) {
-                    console.error(`Gov API returned status ${response.statusText}`);
+                    console.error(`Gov API returned status ${response.status} ${response.statusText}`);
                     throw new Error(`Failed to fetch data: ${response.statusText}`);
                 }
 
@@ -136,14 +94,10 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
         }
     }
 
-    // All retries failed, fall back to mock data
-    console.error('❌ All API attempts failed, falling back to MOCK DATA');
+    // All retries failed
+    console.error('❌ All API attempts failed');
     if (lastError) {
         console.error('Last error:', lastError.message || lastError);
     }
-    
-    let data = MOCK_DATA;
-    if (state) data = data.filter(r => r.state.toLowerCase() === state.toLowerCase());
-    if (district) data = data.filter(r => r.district.toLowerCase() === district.toLowerCase());
-    return data;
+    throw lastError || new Error('Failed to fetch market prices after multiple retries');
 }
