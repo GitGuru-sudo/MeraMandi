@@ -55,6 +55,7 @@ const getStatus = (index: number) => {
 export default function PriceList({ state, district, mandi, records = [] }: Props) {
     const [displayRecords, setDisplayRecords] = useState<PriceRecord[]>(records);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -62,14 +63,16 @@ export default function PriceList({ state, district, mandi, records = [] }: Prop
         // Fetch data on client side
         const fetchData = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const params = new URLSearchParams();
                 if (state) params.set('state', state);
                 if (district) params.set('district', district);
 
                 const res = await fetch(`/api/prices?${params.toString()}`);
+                const data = await res.json();
+
                 if (res.ok) {
-                    const data = await res.json();
                     let filtered = data.records || [];
 
                     if (mandi) {
@@ -82,9 +85,14 @@ export default function PriceList({ state, district, mandi, records = [] }: Prop
                     filtered.sort((a: PriceRecord, b: PriceRecord) => a.market.localeCompare(b.market));
 
                     setDisplayRecords(filtered);
+                } else {
+                    setError(data.error || 'Failed to load prices');
+                    setDisplayRecords([]);
                 }
             } catch (error) {
                 console.error('Failed to fetch prices:', error);
+                setError('Unable to load prices. Please check your internet connection and refresh.');
+                setDisplayRecords([]);
             }
             setLoading(false);
         };
@@ -108,6 +116,35 @@ export default function PriceList({ state, district, mandi, records = [] }: Prop
                     </div>
                 </div>
                 <p className="text-green-700 dark:text-green-400 mt-6 font-medium">Loading latest prices...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900 shadow-sm overflow-hidden">
+                <div className="px-6 py-8 text-center">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl">⚠️</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Unable to Load Prices</h3>
+                    <p className="text-red-600 dark:text-red-300 mb-4">{error}</p>
+                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-4 text-left text-sm text-red-700 dark:text-red-300 space-y-2">
+                        <p className="font-semibold flex items-start gap-2">Please check:</p>
+                        <ul className="space-y-1 text-red-600 dark:text-red-400">
+                            <li>• Internet connection is active</li>
+                            <li>• API key is properly configured</li>
+                            <li>• Try selecting a different state/district</li>
+                            <li>• Refresh the page to retry</li>
+                        </ul>
+                    </div>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                        Refresh Page
+                    </button>
+                </div>
             </div>
         );
     }

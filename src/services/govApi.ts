@@ -20,7 +20,7 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
     console.log('fetchMandiPrices called with:', { apiKey: !!apiKey, state, district });
 
     // Retry logic for API calls
-    const maxRetries = 2;
+    const maxRetries = 3;
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -32,7 +32,7 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
             
             // Add timeout and better error handling for Vercel
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
             
             try {
                 const response = await fetch(url, {
@@ -49,7 +49,7 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
 
                 if (!response.ok) {
                     console.error(`Gov API returned status ${response.status} ${response.statusText}`);
-                    throw new Error(`Failed to fetch data: ${response.statusText}`);
+                    throw new Error(`Government API returned error: ${response.status} ${response.statusText}`);
                 }
 
                 let data = await response.json();
@@ -78,7 +78,7 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
                 
                 // Don't retry on last attempt
                 if (attempt < maxRetries) {
-                    const waitTime = attempt * 1000; // 1s, 2s backoff
+                    const waitTime = Math.pow(2, attempt - 1) * 1000; // Exponential backoff: 1s, 2s, 4s
                     console.log(`Retrying in ${waitTime}ms...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 }
@@ -99,5 +99,5 @@ export async function fetchMandiPrices(apiKey?: string, state?: string, district
     if (lastError) {
         console.error('Last error:', lastError.message || lastError);
     }
-    throw lastError || new Error('Failed to fetch market prices after multiple retries');
+    throw lastError || new Error('Failed to fetch market prices after multiple retries. Government API may be temporarily unavailable.');
 }

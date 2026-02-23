@@ -28,14 +28,31 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ records, total: records.length });
     } catch (error) {
         console.error('[Prices API] Error fetching prices:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch prices';
+        
+        let errorMessage = 'Unable to load prices at this moment';
+        let statusCode = 500;
+
+        if (error instanceof Error) {
+            if (error.message.includes('timeout') || error.message.includes('AbortError')) {
+                errorMessage = 'Request timeout. Please try again or refresh the page.';
+                statusCode = 504;
+            } else if (error.message.includes('API key')) {
+                errorMessage = 'API configuration error. Please contact administrator.';
+                statusCode = 503;
+            } else if (error.message.includes('Government API')) {
+                errorMessage = 'Government API is currently unavailable. Please try again later.';
+                statusCode = 503;
+            } else {
+                errorMessage = error.message;
+            }
+        }
         
         return NextResponse.json(
             { 
                 records: [], 
                 error: errorMessage
             }, 
-            { status: 500 }
+            { status: statusCode }
         );
     }
 }
