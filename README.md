@@ -19,7 +19,7 @@ https://mera-mandi.vercel.app/
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture 
 
 ```
 ┌─────────────────┐
